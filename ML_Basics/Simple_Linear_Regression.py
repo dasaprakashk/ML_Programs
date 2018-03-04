@@ -6,15 +6,14 @@ import pandas as pd
 
 class SimpleLinearRegression:
     
-    theta = np.zeros(2)
-    alpha = 0.01
-    num_iter = 1500
-    
-    def fit(self, X, Y):
+    def fit(self, X, Y, regularization):
         self.X = X
         self.Y = Y
+        theta = np.zeros(2)
+        alpha = 0.01
+        num_iter = 1500
         train = Train(self.X, self.Y)
-        self.theta, self.cost_history = train.gradient_descent(self.theta, self.alpha, self.num_iter)
+        self.theta, self.cost_history = train.gradient_descent(theta, alpha, num_iter, regularization)
     
     def predict(self, X):
         test = Test(X)
@@ -48,14 +47,20 @@ class Train:
         self.X = X
         self.Y = Y
         
-    def gradient_descent(self, theta, alpha, num_iter):
+    def gradient_descent(self, theta, alpha, num_iter, regularization):
         new_theta = np.zeros(2)
         new_theta[0] = theta[0]
         new_theta[1] = theta[1]
         cost_history = []
+        l = 1e-3
         for j in range(num_iter):
             for i in range(theta.size):
-                new_theta[i] = new_theta[i] - (alpha/self.Y.size) * np.sum((np.dot(self.X, theta) - self.Y) * self.X[:, i])
+                f = np.sum((np.dot(self.X, theta) - self.Y) * self.X[:, i])
+                if regularization == 'l1':
+                    r = l*np.sign(new_theta[i])
+                else:
+                    r = l*(new_theta[i]**2)
+                new_theta[i] = new_theta[i] - (alpha/self.Y.size) * (f + r)
             for i in range(theta.size):
                 theta[i] = new_theta[i]
             if j%10 == 0:
@@ -82,7 +87,7 @@ Y = np.array(df.iloc[:, -1])
 
 #model fit
 model = SimpleLinearRegression()
-model.fit(X, Y)
+model.fit(X, Y, regularization='l1')
 print("Training Cost: ", model.cost())
 Y_pred = model.predict(X)
 print("Training Score: ", model.score(Y, Y_pred))
