@@ -83,9 +83,9 @@ Y = np.array(df.iloc[:, -1])
 #model fit
 model = SimpleLinearRegression()
 model.fit(X, Y)
-print("Training Accuracy: ", model.cost())
+print("Training Cost: ", model.cost())
 Y_pred = model.predict(X)
-print("Model Score: ", model.score(Y, Y_pred))
+print("Training Score: ", model.score(Y, Y_pred))
 
 #Plot
 model.plotData(X[:, 1], Y, Y_pred)
