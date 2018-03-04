@@ -33,7 +33,7 @@ class ANNCommon:
 
     #Feed forward
     def feedforward(self, X, w1, b1, w2, b2):
-        z = np.dot(self.X, w1) + b1
+        z = np.dot(X, w1) + b1
         s = Util().sigmoid(z)
         expA = np.exp(s.dot(w2) + b2)
         return s, Util().softmax(expA)
@@ -55,11 +55,11 @@ class ANNCommon:
         for j in range(epoch):
             H, P = self.feedforward(X, w1,b1, w2, b2)
             learning_rate = 1e-4
-            if epoch%100 == 0:
+            if j%1000 == 0:
                 cost = self.cost(self.T, P)
                 rate = self.accuracy(self.Y, P)
                 cost_history.append(cost)
-                print("Epoch: " + str(epoch), " Cost: " + str(cost), " Accuracy: " + str(rate))
+                print("Epoch: " + str(j), " Cost: " + str(cost), " Accuracy: " + str(rate))
             w2 = w2 - learning_rate * self.w2_derivative(self.T, P, H)
             b2 = b2 - learning_rate * self.b2_derivative(self.T, P)
             w1 = w1 - learning_rate * self.w1_derivative(self.T, P, w2, H, X)

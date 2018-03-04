@@ -20,6 +20,11 @@ class Util:
         Y = np.array(Y)
         return X, Y
     
+    def normalize(self, X):
+        for i in range(X.shape[1]):
+            X[:, i] = (X[:, i] - np.mean(X[:, i]))/np.std(X[:, i])
+        return X
+    
     def softmax(self, expA):
         return expA / expA.sum(axis=1, keepdims=True)
     
