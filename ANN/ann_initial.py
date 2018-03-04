@@ -28,7 +28,7 @@ class ANN:
         return ann.accuracy(Y, P)
     
     def plot_cost(self):
-        plt.plot(self.J)
+        plt.plot(self.J, label='Training cost')
         plt.show()
         
 
@@ -46,4 +46,4 @@ P_test = model.predict(X_test)
 Y_test = np.argmax(P_test, axis=1)
 accuracy_test = model.score(y_test, P_test)
 
-
+model.plot_cost()

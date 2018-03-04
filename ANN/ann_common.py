@@ -68,7 +68,7 @@ class ANNCommon:
 
     
     def cost(self, T, P):
-        return np.sum(T*(np.log(P)))
+        return -np.sum(T*(np.log(P)))
     
     def accuracy(self, Y, P):
         Yhat = np.argmax(P, axis=1)
