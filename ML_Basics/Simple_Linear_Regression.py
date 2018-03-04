@@ -1,78 +1,98 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Feb 25 13:03:38 2018
-
-@author: Das
-"""
+#Simple Linear Regression with one feature
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
-#Gradient descent
-def gradient_descent(X, Y, theta, alpha, num_iter):
-    new_theta = np.zeros(X.shape[1])
-    J = []
-    for j in range(num_iter):
-        for i in range(theta.size):
-            new_theta[i] = new_theta[i] - (alpha/Y.size) * np.sum((np.dot(X, theta) - Y) * X[:, i])
-        for i in range(theta.size):
-            theta[i] = new_theta[i]
-        if j % 10 == 0:
-            J.append(cost_function(X, Y, theta))
-            print(theta)
-    return theta, J
-            
-#Cost Function
-def cost_function(X, Y, theta):
-    return np.sum((np.dot(X, theta.T) - Y) ** 2) / (2*Y.size)
-
-#R squared error
-def r2(Y, Yhat):
-    ssres = (Y - Yhat)
-    sstot = Y - np.mean(Y)
-    return 1 - (ssres.dot(ssres) / sstot.dot(sstot))
-
-#Plot data
-def plotData(X, Y, Yhat):
-    plt.scatter(X, Y, marker='x', color = 'red')
-    plt.plot(X, Yhat)
-    plt.xlim(4, 24)
-    plt.xlabel('Input')
-    plt.ylabel('Output')
-    plt.show()
+class SimpleLinearRegression:
     
-#Plot cost function
-def plot_cost_function(J):
-    plt.plot(J)
-    plt.xlabel('Iterations (in 10s)')
-    plt.ylabel('Cost')
-    plt.show()
+    theta = np.zeros(2)
+    alpha = 0.01
+    num_iter = 1500
     
-#Load data
-df = pd.read_csv('Simple_LR.txt', sep=',', header=None)
-df.insert(1, 'A', np.ones(df.shape[0]))
-X = df.iloc[:, 0:-1]
-Y = df.iloc[:, -1]
-X = np.array(X)
-Y = np.array(Y)
+    def fit(self, X, Y):
+        self.X = X
+        self.Y = Y
+        train = Train(self.X, self.Y)
+        self.theta, self.cost_history = train.gradient_descent(self.theta, self.alpha, self.num_iter)
+    
+    def predict(self, X):
+        test = Test(X)
+        self.Yhat = test.get_predictions(self.theta)
+        return self.Yhat
+    
+    def cost(self):
+        train = Train(self.X, self.Y)
+        return train.cost_function(self.theta)
+    
+    def plot_cost(self):
+        plt.plot(self.cost_history)
+        plt.show()
+        
+    #Plot data
+    def plotData(self,X, Y, Yhat):
+        plt.scatter(X, Y, marker='x', color = 'red')
+        plt.plot(X, Yhat)
+        plt.xlim(4, 24)
+        plt.xlabel('Input')
+        plt.ylabel('Output')
+        plt.show()
+        
+    def score(self, Y_test, Y_pred):
+        sserror = np.sum((Y_test - Y_pred)**2)
+        sstot = np.sum((Y_test - np.mean(Y_test))**2)
+        return 1 - (sserror/sstot)
+    
+class Train:
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+        
+    def gradient_descent(self, theta, alpha, num_iter):
+        new_theta = np.zeros(2)
+        new_theta[0] = theta[0]
+        new_theta[1] = theta[1]
+        cost_history = []
+        for j in range(num_iter):
+            for i in range(theta.size):
+                new_theta[i] = new_theta[i] - (alpha/self.Y.size) * np.sum((np.dot(self.X, theta) - self.Y) * self.X[:, i])
+            for i in range(theta.size):
+                theta[i] = new_theta[i]
+            if j%10 == 0:
+                cost = self.cost_function(theta)
+                cost_history.append(cost)
+        return theta, cost_history
+    
+    def cost_function(self, theta):
+        return np.sum((np.dot(self.X, theta) - self.Y)**2)/(2*self.Y.size)
+    
+class Test:
+    def __init__(self, X):
+        self.X = X
+    
+    def get_predictions(self, theta):
+        return np.dot(self.X, theta)
 
-#Initialization
-theta = np.ones(X.shape[1])
-num_iter = 1500
-alpha = 0.01
+df = pd.read_csv("Simple_LR.txt", sep=',', header=None)
+df.insert(0, 'B', np.ones(df.shape[0]))
 
-#Find optimal theta values, predictions, error
-theta, J_history = gradient_descent(X, Y, theta, alpha, num_iter)
-Yhat = np.dot(X, theta)
-plotData(X[:,0], Y, Yhat)
-plot_cost_function(J_history)
-rsquared = r2(Y, Yhat)
+#Data Preprocessing
+X = np.array(df.iloc[:, :-1])
+Y = np.array(df.iloc[:, -1])
+
+#model fit
+model = SimpleLinearRegression()
+model.fit(X, Y)
+print("Training Accuracy: ", model.cost())
+Y_pred = model.predict(X)
+print("Model Score: ", model.score(Y, Y_pred))
+
+#Plot
+model.plotData(X[:, 1], Y, Y_pred)
+model.plot_cost()
 
 #Predict
-#Predict values for population sizes of 35,000 and 70,000
-predict1 = np.dot([[3.5, 1]], theta)
+predict1 = model.predict([[1, 3.5]])
 print('For population = 35,000, we predict a profit of ' + str(predict1*10000))
-predict2 = np.dot([[7, 1]], theta);
+predict2 = model.predict([[1, 7]])
 print('For population = 70,000, we predict a profit of ' + str(predict2*10000))
