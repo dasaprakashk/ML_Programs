@@ -10,34 +10,51 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import fmin_bfgs
 
-#Cross Entropy
-def computeCost(theta, X, Y):
-    Yhat = sigmoid(X, theta)
-    J = (-1)*(np.dot(Y, np.log(Yhat)) + np.dot((1-Y), np.log(1-Yhat)))/Y.size
-    return J.flatten()
-
-#calculate weights
-def computeGradient(theta, X, Y):
-    new_theta = np.zeros(X.shape[1])
-    Yhat = sigmoid(X, theta)
-    for i in range(theta.size):
-        new_theta[i] = np.sum((Yhat-Y)*X[:,i])/Y.size
-    for i in range(theta.size):
-        theta[i] = new_theta[i]
-    return theta
+class LogisticRegression:
     
-#Sigmoid a = 1 / (1 + exp(X.T*theta))
-def sigmoid(X, theta):
-    z = np.dot(X, theta.T)
-    return 1 / (1 + np.exp(-z))
+    def fit(self, X, Y):
+        self.X = X
+        self.Y = Y
+        self.theta = np.array([0.2, 0.2, -24])
+        train = Train(X, Y)
+        self.theta = train.gradient_descent(self.theta)
+        
+    def predict(self, X):
+        train = Train(self.X, self.Y)
+        return train.sigmoid(X, self.theta)
+    
+    def score(self, Y, Yhat):
+        return 1 - np.abs(Y - np.round(Yhat)).sum() / Y.size
+    
+class Train:
+    
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+        
+    #Sigmoid a = 1 / (1 + exp(X.T*theta))
+    def sigmoid(self, X, theta):
+        z = np.dot(self.X, theta.T)
+        return 1 / (1 + np.exp(-z))
+        
+    #Cross Entropy
+    def computeCost(self, theta):
+        Yhat = self.sigmoid(self.X, theta)
+        J = (-1)*(np.dot(self.Y, np.log(Yhat)) + np.dot((1-self.Y), np.log(1-Yhat)))/self.Y.size
+        return J.flatten()
 
-#Simplify cost function to pass to BFGS
-def costBFGS(theta):
-    return computeCost(theta, X, Y) 
+    #calculate weights
+    def computeGradient(self, theta):
+        new_theta = np.zeros(self.X.shape[1])
+        Yhat = self.sigmoid(self.X, theta)
+        for i in range(theta.size):
+            new_theta[i] = np.sum((Yhat-self.Y)*self.X[:,i])/self.Y.size
+        for i in range(theta.size):
+            theta[i] = new_theta[i]
+        return theta
 
-#Simplify weight function to pass to BFHS
-def gradientBFGS(theta):
-    return computeGradient(theta, X, Y)
+    def gradient_descent(self, theta):
+        return fmin_bfgs(self.computeCost, x0=theta, maxiter=400, fprime=self.computeGradient)
 
 #Load and prepare data
 df = pd.read_csv('Logistic_regression.txt', sep=',', header=None)
@@ -47,21 +64,8 @@ Y = df.iloc[:, -1]
 X = np.array(X)
 Y = np.array(Y)
 
-#Weights and cost of initial theta
-theta = np.zeros(X.shape[1])
-J = computeCost(theta, X, Y)
-grad = computeGradient(theta, X, Y)
-
-#Weights and cost
-theta = np.array([0.2, 0.2, -24])
-J = computeCost(theta, X, Y)
-grad = computeGradient(theta, X, Y)
-
-#Weights by BFGS and predictions 
-theta = fmin_bfgs(costBFGS, x0=theta, maxiter=400, fprime=gradientBFGS)
-J = computeCost(theta, X, Y)
-Yhat = sigmoid(X, theta)
-
-#Final classification rate
-print("Final classification rate:", 1 - np.abs(Y - np.round(Yhat)).sum() / Y.size)
+model = LogisticRegression()
+model.fit(X, Y)
+Yhat = model.predict(X)
+print("Classification Rate: ", model.score(Y, Yhat))
 
