@@ -54,7 +54,7 @@ b2 = np.random.randn(output_nodes)
 
 learning_rate = 1e-5
 
-for j in range(1000):
+for j in range(5000):
     H, P = feedforward(X_train, w1, b1, w2, b2)
     if j%100 == 0:
         yhat = np.argmax(P, axis=1)
@@ -70,6 +70,6 @@ for j in range(1000):
 T_test = np.zeros((y_test.size, output_nodes))
 T[np.arange(y_test.size), y_test] = 1
 H_test, P_test = feedforward(X_test, w1, b1, w2, b2)
-y_testh = np.argmax(P_test, axis=0)
+y_testh = np.argmax(P_test, axis=1)
 cost_test = cost_function(T_test, P_test)
 rate = classification_rate(y_test, y_testh)
