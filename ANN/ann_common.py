@@ -25,18 +25,21 @@ class ANNCommon:
         self.T = T
         
         #Initialize weights and bias
-        w1 = np.random.randn(input_nodes, hidden_nodes)
+        w1 = np.random.randn(input_nodes, hidden_nodes)/np.sqrt(input_nodes)
         b1 = np.zeros(hidden_nodes)
-        w2 = np.random.randn(hidden_nodes, output_nodes)
+        w2 = np.random.randn(hidden_nodes, output_nodes)/np.sqrt(hidden_nodes)
         b2 = np.zeros(output_nodes)
         return w1, b1, w2, b2
 
     #Feed forward
     def feedforward(self, X, w1, b1, w2, b2):
-        z = np.dot(X, w1) + b1
-        s = Util().sigmoid(z)
-        expA = np.exp(s.dot(w2) + b2)
-        return s, Util().softmax(expA)
+        util = Util()
+        z = util.z(X, w1, b1)
+        s = util.sigmoid(z)
+        z = util.z(s, w2, b2)
+        expA = np.exp(z)
+        sm = util.softmax(expA)
+        return s, sm
     
     def w2_derivative(self, T, P, H):
         return np.dot(H.T, (P - T))
