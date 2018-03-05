@@ -39,16 +39,16 @@ class ANNCommon:
         return s, Util().softmax(expA)
     
     def w2_derivative(self, T, P, H):
-        return -(np.dot(H.T, (T - P)))
+        return np.dot(H.T, (P - T))
     
     def b2_derivative(self, T, P):
-        return (T-P).sum(axis=0)
+        return (P - T).sum(axis=0)
     
     def w1_derivative(self, T, P, w2, H, X):
-        return -np.dot(X.T, np.dot((T-P), w2.T)*H*(1-H))
+        return np.dot(X.T, np.dot((P - T), w2.T)*H*(1-H))
     
     def b1_derivative(self, T, P, w2, H):
-        return -(np.dot((T-P), w2.T)*H*(1-H)).sum(axis=0)
+        return (np.dot((P - T), w2.T)*H*(1-H)).sum(axis=0)
     
     def backpropogation(self, X, w1, b1, w2, b2, epoch):
         cost_history = []

@@ -25,8 +25,33 @@ class Util:
             X[:, i] = (X[:, i] - np.mean(X[:, i]))/np.std(X[:, i])
         return X
     
+    def sigmoid(self, z):
+        return 1 / (1+np.exp(-z))
+    
     def softmax(self, expA):
         return expA / expA.sum(axis=1, keepdims=True)
     
-    def sigmoid(self, z):
-        return 1 / (1+np.exp(-z))
+    def relu(self, z):
+        return max(0, z)
+    
+    def sigmoid_prime(self, s):
+        return s*(1-s)
+    
+    def softmax_prime(self, s):
+        return s*(1-s)
+    
+    def relu_prime(self, s):
+        if s > 0:
+            return 1
+        else:
+            return 0
+    def z(self, x, w, b):
+        return np.dot(x, w) + b
+    
+    def activate(self, activation, z):
+        if activation == 'relu':
+            return self.relu(z)
+        elif activation == 'softmax':
+            return self.softmax(z)
+        else:
+            return self.sigmoid(z)

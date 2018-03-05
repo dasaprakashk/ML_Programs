@@ -24,11 +24,8 @@ def softmax(expA):
 def feedforward(X, w1, b1, w2, b2):
     z = np.dot(X, w1) + b1
     s = sigmoid(z)
-    expA = z.dot(w2) + b2
+    expA = np.exp(s.dot(w2) + b2)
     return s, softmax(expA)
-
-def backprop():
-    pass
 
 def cost_function(T, P):
     return -np.sum(T*np.log(P))
@@ -39,7 +36,7 @@ def classification_rate(Y, Yhat):
 df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
 
 Y = df.iloc[:, 0]
-X = df.iloc[:, 1:]
+X = df.iloc[:, 1:]/255
 
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=42, shuffle=True)
 
@@ -50,10 +47,12 @@ output_nodes = len(set(y_train))
 T = np.zeros((y_train.size, output_nodes))
 T[np.arange(y_train.size), y_train] = 1
 
-w1 = np.random.randn(input_nodes, hidden_nodes)
+w1 = np.random.randn(input_nodes, hidden_nodes)/np.sqrt(input_nodes)
 b1 = np.random.randn(hidden_nodes)
-w2 = np.random.randn(hidden_nodes, output_nodes)
+w2 = np.random.randn(hidden_nodes, output_nodes)/np.sqrt(hidden_nodes)
 b2 = np.random.randn(output_nodes)
+
+learning_rate = 1e-5
 
 for j in range(1000):
     H, P = feedforward(X_train, w1, b1, w2, b2)
@@ -63,10 +62,10 @@ for j in range(1000):
         rate = classification_rate(y_train, yhat)
         print('Epoch: ' + str(j), 'Cost: ' + str(cost), 'Accuracy: ' + str(rate))
     
-    w2 = w2 - np.sum(np.dot(H.T, (T-P)))
-    b2 = b2 - np.sum((T-P), axis=0)
-    w1 = w1 - np.sum(np.dot(X_train.T, np.dot((T-P), w2.T)*H*(1-H)))
-    b1 = b1 - np.sum(np.dot((T-P), w2.T)*H*(1-H), axis = 0)
+    w2 = w2 - learning_rate * np.dot(H.T, (P-T))
+    b2 = b2 - learning_rate * np.sum((P-T), axis=0)
+    w1 = w1 - learning_rate * np.dot(X_train.T, np.dot((P-T), w2.T)*H*(1-H))
+    b1 = b1 - learning_rate * np.sum(np.dot((P-T), w2.T)*H*(1-H), axis = 0)
 
 T_test = np.zeros((y_test.size, output_nodes))
 T[np.arange(y_test.size), y_test] = 1
