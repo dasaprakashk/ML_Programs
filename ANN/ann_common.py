@@ -64,17 +64,25 @@ class ANNCommon:
                 rate = self.accuracy(self.Y, P)
                 cost_history.append(cost)
                 print("Epoch: " + str(j), " Cost: " + str(cost), " Accuracy: " + str(rate))
+            #Added for derivative of l2 regularization
             w2 = w2 - (reg_factor*w2)
+            #derivative of cost function w.r.t w2
             w2 = w2 - learning_rate * self.w2_derivative(self.T, P, H)
+            #derivative of cost function w.r.t b2
             b2 = b2 - learning_rate * self.b2_derivative(self.T, P)
+            #Added for derivative of l2 regularization
             w1 = w1 - (reg_factor*w1)
+            #derivative of cost function w.r.t w1
             w1 = w1 - learning_rate * self.w1_derivative(self.T, P, w2, H, X)
+            #derivative of cost function w.r.t b1
             b1 = b1 - learning_rate * self.b1_derivative(self.T, P, w2, H)
         return w1, b1, w2, b2, cost_history
 
     
     def cost(self, T, P, w1, w2, reg_factor):
-        return -np.sum(T*(np.log(P))) + reg_factor*np.sum(np.dot(w1, w2)**2)
+        J = -np.sum(T*(np.log(P))) 
+        #Added for L2 regularization
+        J =J + reg_factor*np.sum(np.dot(w1, w2)**2)
     
     def accuracy(self, Y, P):
         Yhat = np.argmax(P, axis=1)
