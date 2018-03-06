@@ -55,23 +55,26 @@ class ANNCommon:
     
     def backpropogation(self, X, w1, b1, w2, b2, epoch):
         cost_history = []
+        reg_factor = 1e-4
+        learning_rate = 1e-4
         for j in range(epoch):
-            H, P = self.feedforward(X, w1,b1, w2, b2)
-            learning_rate = 1e-4
+            H, P = self.feedforward(X, w1,b1, w2, b2)            
             if j%1000 == 0:
-                cost = self.cost(self.T, P)
+                cost = self.cost(self.T, P, w1, w2, reg_factor)
                 rate = self.accuracy(self.Y, P)
                 cost_history.append(cost)
                 print("Epoch: " + str(j), " Cost: " + str(cost), " Accuracy: " + str(rate))
+            w2 = w2 - (reg_factor*w2)
             w2 = w2 - learning_rate * self.w2_derivative(self.T, P, H)
             b2 = b2 - learning_rate * self.b2_derivative(self.T, P)
+            w1 = w1 - (reg_factor*w1)
             w1 = w1 - learning_rate * self.w1_derivative(self.T, P, w2, H, X)
             b1 = b1 - learning_rate * self.b1_derivative(self.T, P, w2, H)
         return w1, b1, w2, b2, cost_history
 
     
-    def cost(self, T, P):
-        return -np.sum(T*(np.log(P)))
+    def cost(self, T, P, w1, w2, reg_factor):
+        return -np.sum(T*(np.log(P))) + reg_factor*np.sum(np.dot(w1, w2)**2)
     
     def accuracy(self, Y, P):
         Yhat = np.argmax(P, axis=1)

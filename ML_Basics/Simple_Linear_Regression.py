@@ -18,6 +18,7 @@ class SimpleLinearRegression:
     def predict(self, X):
         test = Test(X)
         self.Yhat = test.get_predictions(self.theta)
+        print(self.theta)
         return self.Yhat
     
     def cost(self):
@@ -25,14 +26,19 @@ class SimpleLinearRegression:
         return train.cost_function(self.theta)
     
     def plot_cost(self):
+        plt.grid(True)
         plt.plot(self.cost_history)
+        plt.xlabel('Iterations')
+        plt.ylabel('Cost')
         plt.show()
         
     #Plot data
     def plotData(self,X, Y, Yhat):
+        plt.grid(True)
         plt.scatter(X, Y, marker='x', color = 'red')
         plt.plot(X, Yhat)
         plt.xlim(4, 24)
+        plt.ylim(ymin=0)
         plt.xlabel('Input')
         plt.ylabel('Output')
         plt.show()
@@ -101,3 +107,16 @@ predict1 = model.predict([[1, 3.5]])
 print('For population = 35,000, we predict a profit of ' + str(predict1*10000))
 predict2 = model.predict([[1, 7]])
 print('For population = 70,000, we predict a profit of ' + str(predict2*10000))
+
+test = Test(X)
+yh1 = test.get_predictions([-2, 0.5])
+yh2 = test.get_predictions([-3.63023346, 1.16635641])
+
+plt.grid(True)
+plt.scatter(X[:, 1], Y, marker='x', color = 'red')
+plt.plot(X[:, 1], yh1, 'g', X[:, 1], yh2, 'b')
+plt.xlim(4, 24)
+plt.ylim(ymin=0)
+plt.xlabel('Input')
+plt.ylabel('Output')
+plt.show()
