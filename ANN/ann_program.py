@@ -6,17 +6,21 @@ Created on Sun Feb 25 21:59:06 2018
 @author: Das
 """
 from ann_basic import ANNBasic
+from ann_sgd import ANN_SGD
 from ann_common import Common
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 
 class ANN:
-    def fit(self, X, Y, epoch):
-        ann = ANNBasic()
+    def fit(self, X, Y, epoch, optimizer):
         common = Common()
         w1, b1, w2, b2 = common.initialize_weights(X, Y, hidden_nodes=5)
         T = common.yEnc(Y)
+        if optimizer is None:
+            ann = ANNBasic()
+        elif optimizer is 'SGD':
+            ann = ANN_SGD()
         self.w1, self.b1, self.w2, self.b2, self.J = ann.backpropogation(X, Y, w1, b1, w2, b2, T, epoch)
         
     def predict(self, X):
@@ -39,7 +43,7 @@ X = common.normalize(X)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=28, shuffle=True)
 
 model = ANN()
-model.fit(X_train, y_train, epoch=100000)
+model.fit(X_train, y_train, epoch=10000, optimizer='SGD')
 P = model.predict(X_train)
 Yhat = np.argmax(P, axis=1)
 accuracy = model.score(y_train, P) 
