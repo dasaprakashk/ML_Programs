@@ -5,7 +5,7 @@ Created on Sun Feb 25 21:59:06 2018
 
 @author: Das
 """
-from ann_common import ANNCommon
+from ann_basic import ANNBasic
 from util import Util
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,18 +13,18 @@ from sklearn.model_selection import train_test_split
 
 class ANN:
     def fit(self, X, Y, epoch):
-        ann = ANNCommon()
+        ann = ANNBasic()
         w1, b1, w2, b2 = ann.initialize_weights(X, Y, hidden_nodes=5)
         self.w1, self.b1, self.w2, self.b2, self.J = ann.backpropogation(X, w1, b1, w2, b2, epoch)
         
     def predict(self, X):
-        ann = ANNCommon()
+        ann = ANNBasic()
         S, P = ann.feedforward(X, self.w1, self.b1, self.w2, self.b2)
         self.P = P
         return P
     
     def score(self, Y, P):
-        ann = ANNCommon()
+        ann = ANNBasic()
         return ann.accuracy(Y, P)
     
     def plot_cost(self):

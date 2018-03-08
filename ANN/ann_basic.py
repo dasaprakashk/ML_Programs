@@ -9,7 +9,7 @@ Created on Sun Mar  4 15:55:55 2018
 import numpy as np
 from util import Util
 
-class ANNCommon:
+class ANNBasic:
     
     #Get weights
     def initialize_weights(self, X, Y, hidden_nodes):
@@ -77,12 +77,12 @@ class ANNCommon:
             #derivative of cost function w.r.t b1
             b1 = b1 - learning_rate * self.b1_derivative(self.T, P, w2, H)
         return w1, b1, w2, b2, cost_history
-
     
     def cost(self, T, P, w1, w2, reg_factor):
-        J = -np.sum(T*(np.log(P))) 
+        J = -np.sum(T*(np.log(P)))
         #Added for L2 regularization
         J =J + reg_factor*np.sum(np.dot(w1, w2)**2)
+        return J
     
     def accuracy(self, Y, P):
         Yhat = np.argmax(P, axis=1)
