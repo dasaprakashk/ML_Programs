@@ -20,6 +20,7 @@ class LinearRegression:
         alpha = 0.01
         num_iter = 1500
         self.theta, self.cost_history = train.gradient_descent(self.theta, alpha, num_iter)
+        return self.theta, self.cost_history
     
     def cost(self):
         train = Train(self.X, self.Y)
@@ -44,13 +45,11 @@ class Train:
 
     #Gradient descent
     def gradient_descent(self, theta, alpha, num_iter):
-        new_theta = np.zeros(theta.size)
+        #Vector operation
         J_history = []
         for j in range(num_iter):
-            for i in range(theta.size):
-                new_theta[i] = new_theta[i] - (alpha/self.Y.size)*np.sum((np.dot(self.X, theta.T) - self.Y) * self.X[:,i])
-            for i in range(theta.size):
-                theta[i] = new_theta[i]
+            P = np.dot(self.X, theta.T)
+            theta = theta - (alpha/self.Y.size)*np.dot(X.T, (P-Y))
             if j%100 == 0:
                 J_history.append(self.cost_function(theta))
         return theta, J_history
@@ -79,6 +78,11 @@ class Test:
         d = Y-Y.mean()
         return 1 - (n.dot(n) / d.dot(d))
     
+def normalize(X):
+    for i in range(X.shape[1]-1):
+        X[:, i] = (X[:, i] - np.mean(X[:, i]))/np.std(X[:, i])
+    return X
+    
 #Get Data
 df = pd.read_csv('Multiple_LR.txt', sep=',', header=None)
 df.insert(2, 'A', np.ones(df.shape[0]))
@@ -87,13 +91,15 @@ Y = df.iloc[:,-1]
 X = np.array(X)
 Y = np.array(Y)
 
+X = normalize(X)
+
 #Generalization
 for i in range(X.shape[1] - 1):
     X[:, i] = (X[:, i] - X[:, i].mean())/X[:, i].std()
 
 #Create model, predictions and error
 model = LinearRegression()
-model.fit(X, Y)
+theta, J = model.fit(X, Y)
 print("Training Cost: ", model.cost())
 model.plot_Cost()
 Yhat = model.predict(X)
