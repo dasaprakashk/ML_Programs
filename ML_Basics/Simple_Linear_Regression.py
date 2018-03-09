@@ -6,14 +6,14 @@ import pandas as pd
 
 class SimpleLinearRegression:
     
-    def fit(self, X, Y, regularization):
+    def fit(self, X, Y):
         self.X = X
         self.Y = Y
         theta = np.zeros(2)
         alpha = 0.01
         num_iter = 1500
         train = Train(self.X, self.Y)
-        self.theta, self.cost_history = train.gradient_descent(theta, alpha, num_iter, regularization)
+        self.theta, self.cost_history = train.gradient_descent(theta, alpha, num_iter)
         return self.cost_history
     
     def predict(self, X):
@@ -36,28 +36,20 @@ class Train:
         self.X = X
         self.Y = Y
         
-    def gradient_descent(self, theta, alpha, num_iter, regularization):
+    def gradient_descent(self, theta, alpha, num_iter):
         new_theta = np.zeros(2)
         new_theta[0] = theta[0]
         new_theta[1] = theta[1]
         cost_history = []
-        visualization = Visualize()
-        l = 1e-3
         for j in range(num_iter):
             for i in range(theta.size):
                 f = np.sum((np.dot(self.X, theta) - self.Y) * self.X[:, i])
-                if regularization == 'l1':
-                    r = l*np.sign(new_theta[i])
-                else:
-                    r = l*(new_theta[i]**2)
-                new_theta[i] = new_theta[i] - (alpha/self.Y.size) * (f + r)
+                new_theta[i] = new_theta[i] - (alpha/self.Y.size) * f
             for i in range(theta.size):
                 theta[i] = new_theta[i]
             if j%10 == 0:
                 cost = self.cost_function(theta)
                 cost_history.append(cost)
-            if j%100 == 0:
-                visualization.plotData(self.X[:,1], self.Y, np.dot(self.X, theta))
         return theta, cost_history
     
     def cost_function(self, theta):
@@ -98,7 +90,7 @@ Y = np.array(df.iloc[:, -1])
 
 #model fit
 model = SimpleLinearRegression()
-cost_history = model.fit(X, Y, regularization='l1')
+cost_history = model.fit(X, Y)
 print("Training Cost: ", model.cost())
 Y_pred = model.predict(X)
 print("Training Score: ", model.score(Y, Y_pred))
@@ -108,12 +100,10 @@ visualization = Visualize()
 visualization.plotData(X[:, 1], Y, Y_pred)
 visualization.plot_cost(cost_history)
 
+score = model.score(Y, Y_pred)
+
 #Predict
 predict1 = model.predict([[1, 3.5]])
 print('For population = 35,000, we predict a profit of ' + str(predict1*10000))
 predict2 = model.predict([[1, 7]])
 print('For population = 70,000, we predict a profit of ' + str(predict2*10000))
-
-test = Test(X)
-yh1 = test.get_predictions([-2, 0.5])
-yh2 = test.get_predictions([-3.63023346, 1.16635641])

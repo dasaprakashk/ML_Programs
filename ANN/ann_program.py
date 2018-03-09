@@ -43,7 +43,7 @@ X = common.normalize(X)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=28, shuffle=True)
 
 model = ANN()
-model.fit(X_train, y_train, epoch=10000, optimizer='SGD')
+model.fit(X_train, y_train, epoch=100000, optimizer='SGD')
 P = model.predict(X_train)
 Yhat = np.argmax(P, axis=1)
 accuracy = model.score(y_train, P) 
