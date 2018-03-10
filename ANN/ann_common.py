@@ -24,6 +24,8 @@ class Common:
     def sigmoid_plot():
         sample_z = np.linspace(-10, 10, 100)
         sample_a = 1 / (1 + np.exp(-sample_z))
+        plt.xlim(-10, 10)
+        plt.grid()
         plt.plot(sample_z, sample_a)
     
     def normalize(self, X):

@@ -30,8 +30,8 @@ class LogisticRegression:
     
     def plot(self, X, Y, theta):
         plt.scatter(X[:,0], X[:,1], c=Y, s=100, alpha=0.5, cmap='coolwarm')
-        plt.xlabel('Exam 1 score');
-        plt.ylabel('Exam 2 score');
+        plt.xlabel('Exam 1 score')
+        plt.ylabel('Exam 2 score')
         plt.legend()
         x = np.linspace(-2, 2, 100)
         y = -(theta[0] * x + theta[2]) / theta[1]

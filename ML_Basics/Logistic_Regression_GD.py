@@ -44,7 +44,7 @@ class Train:
         J = []
         for i in range(num_iter):
             P = self.sigmoid(X, theta)
-            theta = theta - alpha * np.dot(X.T, (Y-P))/Y.size
+            theta = theta - alpha * np.dot(X.T, (P-Y))/Y.size
             if i%100 == 0:
                 cost = self.cost_function(Y, P)
                 rate = self.score(Y, P)
@@ -56,10 +56,10 @@ class Train:
     def cost_function(self, Y, P):
         l1 = np.log(P)
         l2 = 1- np.log(P)
-        return np.sum(Y*l1 + (1-Y)*l2)/Y.size
+        return np.sum(-Y*l1 - (1-Y)*l2)/Y.size
     
     def score(self, Y, P):
-        return np.mean(np.abs(Y - np.round(P)))
+        return 1 - np.mean(np.abs(np.round(P) - Y))
     
 def normalize(X):
     for i in range(X.shape[1]-1):
@@ -74,10 +74,11 @@ Y = df.iloc[:, -1]
 X = np.array(X)
 Y = np.array(Y)
 
-X = normalize(X)
-
 model = Logistic_Regression()
 model.plotData(X, Y)
+
+X = normalize(X)
+
 theta = np.zeros(3)
 alpha = 0.01
 num_iter = 400
