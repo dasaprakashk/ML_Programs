@@ -28,6 +28,11 @@ class Logistic_Regression:
         x = np.linspace(-2, 2, 100)
         y = -(self.theta[0] * x + self.theta[2]) / self.theta[1]
         plt.plot(x, y, 'r')
+        plt.show()
+        
+    def plotData(self, X, Y):
+        plt.scatter(X[:, 0], X[:, 1], c=Y, s=100, alpha=0.5, cmap='coolwarm')
+        plt.show()
 
 class Train:
     #sigmoid = 1 / 1+e-z
@@ -72,6 +77,7 @@ Y = np.array(Y)
 X = normalize(X)
 
 model = Logistic_Regression()
+model.plotData(X, Y)
 theta = np.zeros(3)
 alpha = 0.01
 num_iter = 400
