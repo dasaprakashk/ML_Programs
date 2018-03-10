@@ -32,13 +32,13 @@ class LogisticRegression:
         plt.ylabel('Microchip Test 2')
         plt.show()
         
-    def plotDecisionBoundary(self, X, Y, W, b):
+    def plotDecisionBoundary(self, X, Y, W, b, order):
         plt.scatter(X[:, 0], X[:, 1], c=Y, s=118, alpha=0.5, cmap='coolwarm')
         plt.xlabel('Microchip Test 1')
         plt.ylabel('Microchip Test 2')
         dim = np.linspace(-1, 1.5, 1000)
         x, y = np.meshgrid(dim, dim)
-        poly = self.mapfeature(np.column_stack((x.flatten(), y.flatten())), order=6)
+        poly = self.mapfeature(np.column_stack((x.flatten(), y.flatten())), order)
         z = (np.dot(poly, W) + b).reshape(1000, 1000)
         plt.contour(x, y, z, levels=[0], colors=['r'])
         plt.show()
@@ -66,7 +66,7 @@ class Train:
     def cost_function(self, Y, P, lambda_rate, W):
         l1 = np.log(P)
         l2 = np.log(1-P)
-        reg = lambda_rate*np.sum(W)/(2*Y.size)
+        reg = lambda_rate*np.sum(W**2)/(2*Y.size)
         return -np.sum(Y*l1 + (1-Y)*l2)/Y.size + reg
     
     def score(self, Y, P):
@@ -94,5 +94,5 @@ epochs = 800
 lambda_rate = 10
 W, b, J = model.fit(X_poly, Y, W, b, alpha, lambda_rate, epochs)
 P = model.predict(X_poly)
-model.plotDecisionBoundary(X, Y, W, b)
+model.plotDecisionBoundary(X, Y, W, b, order=6)
 
