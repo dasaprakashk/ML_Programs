@@ -9,6 +9,7 @@ Created on Sun Feb 25 17:18:44 2018
 import numpy as np
 import pandas as pd
 from scipy.optimize import fmin_bfgs
+import matplotlib.pyplot as plt
 
 class LogisticRegression:
     
@@ -18,6 +19,7 @@ class LogisticRegression:
         self.theta = np.array([0, 0, -25])
         train = Train(X, Y)
         self.theta = train.gradient_descent(self.theta)
+        return self.theta
         
     def predict(self, X):
         train = Train(self.X, self.Y)
@@ -25,6 +27,15 @@ class LogisticRegression:
     
     def score(self, Y, Yhat):
         return 1 - np.abs(Y - np.round(Yhat)).sum() / Y.size
+    
+    def plot(self, X, Y, theta):
+        plt.scatter(X[:,0], X[:,1], c=Y, s=100, alpha=0.5, cmap='coolwarm')
+        plt.xlabel('Exam 1 score');
+        plt.ylabel('Exam 2 score');
+        plt.legend()
+        x = np.linspace(-2, 2, 100)
+        y = -(theta[0] * x + theta[2]) / theta[1]
+        plt.plot(x, y, 'r')
     
 class Train:
     
@@ -71,7 +82,7 @@ Y = np.array(Y)
 X = normalize(X)
 
 model = LogisticRegression()
-model.fit(X, Y)
+theta = model.fit(X, Y)
 Yhat = model.predict(X)
+model.plot(X, Y, theta)
 print("Classification Rate: ", model.score(Y, Yhat))
-

@@ -8,6 +8,7 @@ Created on Sun Mar  4 15:51:23 2018
 
 import numpy as np 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class Common:
     
@@ -19,6 +20,11 @@ class Common:
         X = np.array(X)
         Y = np.array(Y)
         return X, Y
+    
+    def sigmoid_plot():
+        sample_z = np.linspace(-10, 10, 100)
+        sample_a = 1 / (1 + np.exp(-sample_z))
+        plt.plot(sample_z, sample_a)
     
     def normalize(self, X):
         for i in range(X.shape[1]):
