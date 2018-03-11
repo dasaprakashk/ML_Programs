@@ -9,6 +9,7 @@ Created on Sun Mar  4 22:28:41 2018
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 def normalize(X):
     for i in range(X.shape[1]):
@@ -36,7 +37,16 @@ def classification_rate(Y, Yhat):
 df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
 
 Y = df.iloc[:, 0]
-X = df.iloc[:, 1:]/255
+X = df.iloc[:, 1:]
+
+s = []
+for index, data in X.iterrows():
+    if index%3000 == 0:
+        s.append(data.values.reshape(28, 28))
+
+for i in range(len(s)):
+    plt.imshow(s[i], cmap='gray')
+    plt.show()
 
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=42, shuffle=True)
 

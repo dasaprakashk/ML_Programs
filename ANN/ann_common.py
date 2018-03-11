@@ -6,20 +6,10 @@ Created on Sun Mar  4 15:51:23 2018
 @author: Das
 """
 
-import numpy as np 
-import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
 class Common:
-    
-    #Get Data
-    def get_tabular_data(self, filename):
-        df = pd.read_csv(filename, sep=',')
-        X = df.iloc[:, 0:-1]
-        Y = df.iloc[:, -1]
-        X = np.array(X)
-        Y = np.array(Y)
-        return X, Y
     
     def sigmoid_plot():
         sample_z = np.linspace(-10, 10, 100)
@@ -40,19 +30,17 @@ class Common:
         return expA / expA.sum(axis=1, keepdims=True)
     
     def relu(self, z):
-        return max(0, z)
+        return np.where(z > 0, z, 0.0)
     
-    def sigmoid_prime(self, s):
-        return s*(1-s)
+    def sigmoid_prime(self, z):
+        return (np.exp(-z))/((1+np.exp(-z))**2)
     
     def softmax_prime(self, s):
         return s*(1-s)
     
     def relu_prime(self, s):
-        if s > 0:
-            return 1
-        else:
-            return 0
+        return np.where(s > 0, 1.0, 0.0)
+    
     def z(self, x, w, b):
         return np.dot(x, w) + b
     
@@ -92,11 +80,20 @@ class Common:
     def b2_derivative(self, T, P):
         return (P - T).sum(axis=0)
     
-    def w1_derivative(self, T, P, w2, H, X):
-        return np.dot(X.T, np.dot((P - T), w2.T)*H*(1-H))
+    def w1_derivative(self, T, P, w2, H, X, activation):
+        H_prime = self.get_hprime(T, P, w2, H, activation)
+        return np.dot(X.T, H_prime)
     
-    def b1_derivative(self, T, P, w2, H):
-        return (np.dot((P - T), w2.T)*H*(1-H)).sum(axis=0)
+    def b1_derivative(self, T, P, w2, H, activation):
+        return self.get_hprime(T, P, w2, H, activation)
+    
+    def get_hprime(self, T, P, w2, H, activation):
+        if activation == 'tanh':
+            return np.dot((P - T), w2.T) * (1 - H * H)
+        elif activation == 'relu':
+            return np.dot((P - T), w2.T) * self.relu_prime(H)
+        else:
+            return np.dot((P - T), w2.T) * self.softmax_prime(H)
     
     def accuracy(self, Y, P):
         Yhat = np.argmax(P, axis=1)

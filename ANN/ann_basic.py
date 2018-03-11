@@ -15,38 +15,43 @@ class ANNBasic:
         self.common = Common()
     
     #Feed forward
-    def feedforward(self, X, w1, b1, w2, b2):
+    def feedforward(self, X, w1, b1, w2, b2, activation):
         z = self.common.z(X, w1, b1)
-        s = self.common.sigmoid(z)
+        if activation == 'tanh':
+            s = np.tanh(z)
+        elif activation == 'relu':
+            s = self.common.relu(z)
+        else:
+            s = self.common.sigmoid(z)
         z = self.common.z(s, w2, b2)
         expA = np.exp(z)
         sm = self.common.softmax(expA)
         return s, sm
     
-    def backpropogation(self, X, Y, w1, b1, w2, b2, T, epoch):
+    def backpropogation(self, X, Y, w1, b1, w2, b2, T, epoch, activation, alpha, lambda_reg):
         cost_history = []
-        reg_factor = 1e-4
-        learning_rate = 1e-4
+        acc_history = []
         for j in range(epoch):
-            H, P = self.feedforward(X, w1,b1, w2, b2)            
-            if j%1000 == 0:
-                cost = self.cost(T, P, w1, w2, reg_factor)
+            H, P = self.feedforward(X, w1,b1, w2, b2, activation)            
+            if j%100 == 0:
+                cost = self.cost(T, P, w1, w2, lambda_reg)
                 rate = self.common.accuracy(Y, P)
                 cost_history.append(cost)
+                acc_history.append(rate)
                 print("Epoch: " + str(j), " Cost: " + str(cost), " Accuracy: " + str(rate))
             #Added for derivative of l2 regularization
-            w2 = w2 - (reg_factor*w2)
+            w2 = w2 - (lambda_reg*w2)
             #derivative of cost function w.r.t w2
-            w2 = w2 - learning_rate * self.common.w2_derivative(T, P, H)
+            w2 = w2 - alpha * self.common.w2_derivative(T, P, H)
             #derivative of cost function w.r.t b2
-            b2 = b2 - learning_rate * self.common.b2_derivative(T, P)
+            b2 = b2 - alpha * self.common.b2_derivative(T, P)
             #Added for derivative of l2 regularization
-            w1 = w1 - (reg_factor*w1)
+            w1 = w1 - (lambda_reg*w1)
             #derivative of cost function w.r.t w1
-            w1 = w1 - learning_rate * self.common.w1_derivative(T, P, w2, H, X)
+            w1 = w1 - alpha * self.common.w1_derivative(T, P, w2, H, X, activation)
             #derivative of cost function w.r.t b1
-            b1 = b1 - learning_rate * self.common.b1_derivative(T, P, w2, H)
-        return w1, b1, w2, b2, cost_history
+            b1 = b1 - alpha * self.common.b1_derivative(T, P, w2, H, activation)
+        return w1, b1, w2, b2, cost_history, acc_history
     
     def cost(self, T, P, w1, w2, reg_factor):
         J = -np.sum(T*(np.log(P)))
