@@ -85,7 +85,7 @@ class Common:
         return np.dot(X.T, H_prime)
     
     def b1_derivative(self, T, P, w2, H, activation):
-        return self.get_hprime(T, P, w2, H, activation)
+        return self.get_hprime(T, P, w2, H, activation).sum(axis=0)
     
     def get_hprime(self, T, P, w2, H, activation):
         if activation == 'tanh':

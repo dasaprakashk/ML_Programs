@@ -9,7 +9,7 @@ Created on Sun Mar  4 15:55:55 2018
 import numpy as np
 from ann_common import Common
 
-class ANNBasic:
+class ANN_Basic:
     
     def __init__(self):
         self.common = Common()
@@ -28,7 +28,7 @@ class ANNBasic:
         sm = self.common.softmax(expA)
         return s, sm
     
-    def backpropogation(self, X, Y, w1, b1, w2, b2, T, epoch, activation, alpha, lambda_reg):
+    def backpropagation(self, X, Y, w1, b1, w2, b2, T, epoch, activation, alpha, lambda_reg):
         cost_history = []
         acc_history = []
         for j in range(epoch):

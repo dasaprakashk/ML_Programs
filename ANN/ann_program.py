@@ -5,8 +5,9 @@ Created on Sun Feb 25 21:59:06 2018
 
 @author: Das
 """
-from ann_basic import ANNBasic
+from ann_basic import ANN_Basic
 from ann_sgd import ANN_SGD
+from ann_batchGD import ANN_BatchGD
 from ann_common import Common
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,14 +19,21 @@ class ANN:
         common = Common()
         w1, b1, w2, b2 = common.initialize_weights(X, Y, hidden_nodes=50)
         T = common.yEnc(Y)
-        if optimizer is None:
-            ann = ANNBasic()
+        if optimizer is 'MBGD':
+            ann = ANN_BatchGD()
         elif optimizer is 'SGD':
             ann = ANN_SGD()
-        self.w1, self.b1, self.w2, self.b2, self.J, self.A = ann.backpropogation(X, Y, w1, b1, w2, b2, T, epoch, activation, alpha, lambda_reg)
+        else:
+            ann = ANN_Basic()
+        self.w1, self.b1, self.w2, self.b2, self.J, self.A = ann.backpropagation(X, Y, w1, b1, w2, b2, T, epoch, activation, alpha, lambda_reg)
         
-    def predict(self, X, activation):
-        ann = ANNBasic()
+    def predict(self, X, activation, optimizer):
+        if optimizer is 'MBGD':
+            ann = ANN_BatchGD()
+        elif optimizer is 'SGD':
+            ann = ANN_SGD()
+        else:
+            ann = ANN_Basic()
         S, P = ann.feedforward(X, self.w1, self.b1, self.w2, self.b2, activation)
         self.P = P
         return P
@@ -43,35 +51,40 @@ class ANN:
         plt.show()
         
     #Get Data
-    '''def get_tabular_data(self, filename):
+    def get_tabular_data(self, filename):
         df = pd.read_csv(filename, sep=',')
         X = df.iloc[:, 0:-1]
         Y = df.iloc[:, -1]
         X = np.array(X)
         Y = np.array(Y)
-        return X, Y'''
+        return X, Y
  
 common = Common()
 model = ANN()       
 
-df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
+#For ecommerce dataset
+X, Y = model.get_tabular_data('ecommerce_data.csv')
+X = common.normalize(X)
 
+#For MNIST Dataset
+'''
+df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
 Y = df.iloc[:, 0]
 X = df.iloc[:, 1:]
 
-X = X / 255.0
+X = X / 255.0'''
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=28, shuffle=True)
 
 lambda_reg = 0
-alpha = 1e-6
+alpha = 1e-4
 epoch = 5000
-activation = 'relu'
-model.fit(X_train, y_train, epoch, activation, alpha, lambda_reg, optimizer=None)
-P = model.predict(X_train, activation)
+activation = 'sigmoid'
+model.fit(X_train, y_train, epoch, activation, alpha, lambda_reg, optimizer='SGD')
+P = model.predict(X_train, activation, optimizer='SGD')
 Yhat = np.argmax(P, axis=1)
 accuracy = model.score(y_train, P) 
 
-P_test = model.predict(X_test, activation)
+P_test = model.predict(X_test, activation, optimizer='SGD')
 Y_test = np.argmax(P_test, axis=1)
 accuracy_test = model.score(y_test, P_test)
 
