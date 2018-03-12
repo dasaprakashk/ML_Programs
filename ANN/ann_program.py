@@ -79,12 +79,12 @@ lambda_reg = 0
 alpha = 1e-4
 epoch = 5000
 activation = 'sigmoid'
-model.fit(X_train, y_train, epoch, activation, alpha, lambda_reg, optimizer='SGD')
-P = model.predict(X_train, activation, optimizer='SGD')
+model.fit(X_train, y_train, epoch, activation, alpha, lambda_reg, optimizer=None)
+P = model.predict(X_train, activation, optimizer=None)
 Yhat = np.argmax(P, axis=1)
 accuracy = model.score(y_train, P) 
 
-P_test = model.predict(X_test, activation, optimizer='SGD')
+P_test = model.predict(X_test, activation, optimizer=None)
 Y_test = np.argmax(P_test, axis=1)
 accuracy_test = model.score(y_test, P_test)
 
