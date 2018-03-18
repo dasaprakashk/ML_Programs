@@ -221,7 +221,7 @@ X = X/255.0
 layer_dims = [X.shape[1], 30, 20, len(set(Y))]
 deepNN = Deep_NN(layer_dims)
 
-Yhat, gradients, parameters = deepNN.DNN_Main(X, Y, 1000, 0.1, layer_dims, 'mini_batch')
+Yhat, gradients, parameters = deepNN.DNN_Main(X, Y, 1000, 0.01, layer_dims, 'mini_batch')
 
 accuracy = deepNN.accuracy(Yhat, Y)
 util = Util()
