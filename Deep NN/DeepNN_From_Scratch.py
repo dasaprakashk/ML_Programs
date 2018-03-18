@@ -175,7 +175,7 @@ X = X/255.0
 layer_dims = [X.shape[1], 30, 20, len(set(Y))]
 deepNN = Deep_NN(layer_dims)
 
-Yhat, J_history, Acc_history, gradients, parameters = deepNN.DNN_Main(X, Y, epochs=5000, alpha = 0.3, layer_dims=layer_dims)
+Yhat, J_history, Acc_history, gradients, parameters = deepNN.DNN_Main(X, Y, epochs=5000, alpha = 0.25, layer_dims=layer_dims)
 
 accuracy = deepNN.accuracy(Yhat, Y)
 
