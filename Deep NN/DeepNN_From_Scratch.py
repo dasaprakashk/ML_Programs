@@ -9,6 +9,7 @@ Created on Thu Mar 15 13:50:46 2018
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
 
 class Util:
     def sigmoid(self, z):
@@ -161,15 +162,19 @@ class Deep_NN:
         Acc_history = []
         T = util.yEnc(Y)
         for i in range(epochs):
-            batches = []
-            np.random.shuffle(X)
+            s = np.arange(X.shape[0])
+            np.random.shuffle(s)
+            X = X[s]
+            Y = Y[s]
+            T = T[s]
             for k in range(0, X.shape[0], batch_size):
-                batches.append(X[k:k+batch_size, :])
-            for batch in batches:
-                A, caches = self.feed_forward(X, parameters)
-                J = self.cost_function(A, T)
-                rate = self.accuracy(A, Y)
-                gradients = self.back_propogation(T, A, caches)
+                x = X[k:k+batch_size, :]
+                y = Y[k:k+batch_size]
+                t = T[k:k+batch_size, :]
+                A, caches = self.feed_forward(x, parameters)
+                J = self.cost_function(A, t)
+                rate = self.accuracy(A, y)
+                gradients = self.back_propogation(t, A, caches)
                 parameters = self.update_parameters(parameters, gradients, alpha)
             if print_cost:
                 if i % 100 == 0:
