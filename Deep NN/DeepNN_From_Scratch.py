@@ -203,7 +203,7 @@ class Deep_NN:
         plt.plot(J_history)
 
 df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
-df = df.iloc[0:5000, :]
+df = df.iloc[0:25000, :]
 X = df.iloc[:, 1:]
 Y = df.iloc[:, 0]
 
