@@ -127,31 +127,69 @@ class Deep_NN:
             gradients['db' + str(i + 1)] = db
         return gradients
 
-    def parameter_update(self, parameters, gradients, alpha):
+    def update_parameters(self, parameters, gradients, alpha):
         layers = len(parameters) // 2
         
         for l in range(layers):
             parameters["W" + str(l+1)] -= alpha * gradients["dW" + str(l+1)]
             parameters["b" + str(l+1)] -= alpha * gradients["db" + str(l+1)]
         return parameters
-
-    def DNN_Main(self, X, Y, epochs, alpha, layer_dims):
+    
+    def update_full_GD(self, X, Y, epochs, alpha, layer_dims, parameters, print_cost):
         util = Util()
         J_history = []
         Acc_history = []
         T = util.yEnc(Y)
-        parameters = self.initialise_parameters()
         for i in range(epochs):
             A, caches = self.feed_forward(X, parameters)
             J = self.cost_function(A, T)
             rate = self.accuracy(A, Y)
             gradients = self.back_propogation(T, A, caches)
-            parameters = self.parameter_update(parameters, gradients, alpha)
-            if i % 100 == 0:
-                J_history.append(J)
-                Acc_history.append(rate)
-                print('Iteration: ' + str(i), 'Cost: ' + str(J) + 'Accuracy: ' + str(rate))
-        return A, J_history, Acc_history, gradients, parameters
+            parameters = self.update_parameters(parameters, gradients, alpha)
+            if print_cost:
+                if i % 100 == 0:
+                    J_history.append(J)
+                    Acc_history.append(rate)
+                    print('Iteration: ' + str(i), 'Cost: ' + str(J) + \
+                             'Accuracy: ' + str(rate))
+                self.plot_cost(J_history)
+        return A, gradients, parameters
+    
+    def update_SGD(self, X, Y, epochs, alpha, layer_dims, parameters, batch_size, print_cost):
+        util = Util()
+        J_history = []
+        Acc_history = []
+        T = util.yEnc(Y)
+        for i in range(epochs):
+            batches = []
+            np.random.shuffle(X)
+            for k in range(0, X.shape[0], batch_size):
+                batches.append(X[k:k+batch_size, :])
+            for batch in batches:
+                A, caches = self.feed_forward(X, parameters)
+                J = self.cost_function(A, T)
+                rate = self.accuracy(A, Y)
+                gradients = self.back_propogation(T, A, caches)
+                parameters = self.update_parameters(parameters, gradients, alpha)
+            if print_cost:
+                if i % 100 == 0:
+                    J_history.append(J)
+                    Acc_history.append(rate)
+                    print('Iteration: ' + str(i), 'Cost: ' + str(J) + 'Accuracy: ' + str(rate))
+                self.plot_cost(J_history)
+        return A, gradients, parameters
+    
+    def DNN_Main(self, X, Y, epochs, alpha, layer_dims, batch_type):
+        parameters = self.initialise_parameters()
+        if batch_type == 'full':
+            A, gradients, parameters = self.update_full_GD(X, Y, epochs, alpha, layer_dims, parameters, True)
+        else:
+            if batch_type == 'mini_batch':
+                batch_size = 512
+            else:
+                batch_size = 1
+            A, gradients, parameters = self.update_SGD(X, Y, epochs, alpha, layer_dims, parameters, batch_size, True)
+        return A, gradients, parameters
                 
     def cost_function(self, Yhat, Y):
         J = -np.sum(Y*(np.log(Yhat)))
@@ -160,9 +198,12 @@ class Deep_NN:
     def accuracy(self, Yhat, Y):
         Yhat = np.argmax(Yhat, axis = 1)
         return np.mean(Y == Yhat)
+    
+    def plot_cost(self, J_history):
+        plt.plot(J_history)
 
 df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
-df = df.iloc[0:10000, :]
+df = df.iloc[0:5000, :]
 X = df.iloc[:, 1:]
 Y = df.iloc[:, 0]
 
@@ -175,12 +216,9 @@ X = X/255.0
 layer_dims = [X.shape[1], 30, 20, len(set(Y))]
 deepNN = Deep_NN(layer_dims)
 
-Yhat, J_history, Acc_history, gradients, parameters = deepNN.DNN_Main(X, Y, epochs=5000, alpha = 0.25, layer_dims=layer_dims)
+Yhat, gradients, parameters = deepNN.DNN_Main(X, Y, 1000, 0.1, layer_dims, 'mini_batch')
 
 accuracy = deepNN.accuracy(Yhat, Y)
-
-plt.plot(J_history)
-plt.show()
-
-plt.plot(Acc_history)
-plt.show()
+util = Util()
+T = util.yEnc(Y)
+cost = deepNN.cost_function(Yhat, T)
