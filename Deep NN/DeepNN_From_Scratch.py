@@ -9,7 +9,7 @@ Created on Thu Mar 15 13:50:46 2018
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import random
+from sklearn.model_selection import train_test_split
 
 class Util:
     def sigmoid(self, z):
@@ -44,7 +44,7 @@ class Util:
         T[Y, np.arange(Y.size)] = 1
         return T.T
     
-class Deep_NN:
+class DNN_Core:
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
         
@@ -184,31 +184,46 @@ class Deep_NN:
                 self.plot_cost(J_history)
         return A, gradients, parameters
     
-    def DNN_Main(self, X, Y, epochs, alpha, layer_dims, batch_type):
-        parameters = self.initialise_parameters()
+    def plot_cost(self, J_history):
+        plt.plot(J_history)
+        
+    def accuracy(self, Yhat, Y):
+        Yhat = np.argmax(Yhat, axis = 1)
+        return np.mean(Y == Yhat)
+    
+    def cost_function(self, Yhat, Y):
+        J = -np.sum(Y*(np.log(Yhat)))
+        return J
+
+class DNN:
+    def __init__(self, layer_dims):
+        self.layer_dims = layer_dims
+    
+    def fit(self, X, Y, epochs, alpha, layer_dims, batch_type):
+        core = DNN_Core(self.layer_dims)
+        parameters = core.initialise_parameters()
         if batch_type == 'full':
-            A, gradients, parameters = self.update_full_GD(X, Y, epochs, alpha, layer_dims, parameters, True)
+            A, gradients, parameters = core.update_full_GD(X, Y, epochs, alpha, layer_dims, parameters, True)
         else:
             if batch_type == 'mini_batch':
                 batch_size = 512
             else:
                 batch_size = 1
-            A, gradients, parameters = self.update_SGD(X, Y, epochs, alpha, layer_dims, parameters, batch_size, True)
+            A, gradients, parameters = core.update_SGD(X, Y, epochs, alpha, layer_dims, parameters, batch_size, True)
         return A, gradients, parameters
-                
-    def cost_function(self, Yhat, Y):
-        J = -np.sum(Y*(np.log(Yhat)))
-        return J
-
-    def accuracy(self, Yhat, Y):
-        Yhat = np.argmax(Yhat, axis = 1)
-        return np.mean(Y == Yhat)
     
-    def plot_cost(self, J_history):
-        plt.plot(J_history)
+    def predict(self, X, parameters):
+        core = DNN_Core(self.layer_dims)
+        Yhat, caches = core.feed_forward(X, parameters)
+        return Yhat
+    
+    def accuracy(self, Yhat, Y):
+        core = DNN_Core(self.layer_dims)
+        return core.accuracy(Yhat, Y)
+    
+    
 
 df = pd.read_csv('../../MNIST_Data/train.csv', sep = ',')
-df = df.iloc[0:25000, :]
 X = df.iloc[:, 1:]
 Y = df.iloc[:, 0]
 
@@ -219,11 +234,14 @@ X = X/255.0
 
 
 layer_dims = [X.shape[1], 30, 20, len(set(Y))]
-deepNN = Deep_NN(layer_dims)
+deepNN = DNN(layer_dims)
 
-Yhat, gradients, parameters = deepNN.DNN_Main(X, Y, 1000, 0.01, layer_dims, 'mini_batch')
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.05, random_state=28) 
 
-accuracy = deepNN.accuracy(Yhat, Y)
-util = Util()
-T = util.yEnc(Y)
-cost = deepNN.cost_function(Yhat, T)
+Yhat, gradients, parameters = deepNN.fit(X_train, Y_train, 1000, 0.01, layer_dims, 'mini_batch')
+
+accuracy = deepNN.accuracy(Yhat, Y_train)
+
+Yhat_test = deepNN.predict(X_test)
+
+accuracy_test = deepNN.accuracy(Yhat_test, Y_test)
