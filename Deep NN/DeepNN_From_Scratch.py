@@ -238,7 +238,7 @@ deepNN = DNN(layer_dims)
 
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.05, random_state=28) 
 
-Yhat, gradients, parameters = deepNN.fit(X_train, Y_train, 1000, 0.01, layer_dims, 'mini_batch')
+Yhat, gradients, parameters = deepNN.fit(X_train, Y_train, 1500, 0.01, layer_dims, 'mini_batch')
 
 accuracy = deepNN.accuracy(Yhat, Y_train)
 
