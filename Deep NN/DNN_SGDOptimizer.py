@@ -14,6 +14,7 @@ class DNN_Optimizer:
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
     
+    #Stochastic Gradient descent - Generalized for Mini batch and batch
     def SGD(self, X, Y, epochs, alpha, batch_size, reg_type, reg_rate, momentum, nesterov, print_cost):
         util = Util()
         core = DNN_Core(self.layer_dims)
@@ -53,11 +54,15 @@ class DNN_Optimizer:
     def update_parameters(self, parameters, gradients, alpha, l2, velocity, momentum, nesterov, m):
         layers = len(parameters) // 2
         for l in range(layers):
+            #l2 regularization
             parameters["W" + str(l+1)] += (alpha * l2/m) * parameters["W" + str(l+1)]
+            
+            #Update velocity V(t) = ßV(t-1) + alpha(gradients)  
             velocity["W" + str(l+1)] = momentum * velocity["W" + str(l+1)] - \
                                         alpha * gradients["dW" + str(l+1)]
             velocity["b" + str(l+1)] = momentum * velocity["b" + str(l+1)] - \
                                         alpha * gradients["db" + str(l+1)]
+            #Nesterov and momentum updates
             if nesterov:
                 parameters["W" + str(l+1)] += momentum * velocity["W" + str(l+1)] - \
                                                 alpha * gradients["W" + str(l+1)]

@@ -4,6 +4,8 @@
 Created on Wed Mar 21 23:07:26 2018
 
 @author: Das
+
+Has ccore functions for computational model of Deep Neural Network
 """
 
 import numpy as np
@@ -11,9 +13,11 @@ import matplotlib.pyplot as plt
 from Util import Util
 
 class DNN_Core:
+    #Init
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
-        
+    
+    #Initialise weights and bias of all layers
     def initialise_parameters(self):
         parameters = {}
         for l in range(1, len(self.layer_dims)):
@@ -23,6 +27,7 @@ class DNN_Core:
             parameters['b' + str(l)] = b
         return parameters
     
+    #Initialise velocity for momentum and optimizers
     def initialise_velocity(self, parameters):
         L = len(parameters)//2
         velocity = {}
@@ -31,20 +36,34 @@ class DNN_Core:
             velocity["b" + str(l+1)] = 0
         return velocity
     
+    #Apply dropout for feedforward
     def apply_dropout(self, A, dropout):
+        #Create a dropout matrix with same dimension as activation layer matrix
         D = np.random.randn(A.shape[0], A.shape[1])
+        
+        #Scale  down using the dropout ratio parameter
         D = D < dropout
+        
+        #Apply to activation matrix
         A = A * D
+        
+        #Scale up activation layer
         A = A / dropout
         return A, D
 
+    #Linear approximation function for feed forward
     def linear_forward(self, A, W, b):
         z = np.dot(A, W) + b.T
         return z, (A, W, b)
 
+    #Activation function for feed forward
     def activation_forward(self, A, W, b, activation, dropout):
         util = Util()
+        
+        #Get linear approximation
         Z, linear_cache = self.linear_forward(A, W, b)
+        
+        #Call activation function appropriately
         if activation == 'relu':
             A, activation_cache = util.relu(Z)
         elif activation == 'tanh':
@@ -59,6 +78,7 @@ class DNN_Core:
             A, dropout_cache = self.apply_dropout(A, dropout)
         return A, (linear_cache, activation_cache, dropout_cache)
 
+    #Feed Forward
     def feed_forward(self, X, parameters, dropout):
         caches = []
         L = len(parameters) // 2
@@ -75,6 +95,7 @@ class DNN_Core:
         caches.append(cache)
         return A, caches
     
+    #Backpropogation - Linear approximation function
     def linear_backward(self, dZ, cache):
         A_prev, W, b = cache
         m = A_prev.shape[0]
@@ -82,7 +103,8 @@ class DNN_Core:
         db = dZ.sum(axis=0, keepdims=True)/m
         dA_prev = np.dot(dZ, W.T)
         return dA_prev, dW, db.T
-
+    
+    #Backpropogation - Activation function
     def activation_backward(self, dA, cache, dropout_cache, activation, dropout):
         util = Util()
         linear_cache, activation_cache, d = cache
@@ -96,11 +118,14 @@ class DNN_Core:
         else:
             dZ = dA * util.sigmoid_prime(activation_cache)
         dA_prev, dW, db = self.linear_backward(dZ, linear_cache)
+        
+        #Apply dropout to hidden layer
         if dropout_cache is not None:
             dA_prev = dA_prev * dropout_cache
             dA_prev = dA_prev / dropout
         return dA_prev, dW, db
-
+    
+    #Backpropogation
     def back_propogation(self, Y, Yhat, caches, dropout):
         L = len(caches)
         gradients = {}
@@ -121,6 +146,7 @@ class DNN_Core:
             gradients['db' + str(l + 1)] = db
         return gradients
     
+    #Cost function - Negative log likelihood
     def cost_function(self, Yhat, Y, parameters, reg_rate):
         L = len(parameters)//2
         sum_weights = 0
