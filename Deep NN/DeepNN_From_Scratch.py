@@ -8,6 +8,7 @@ Created on Thu Mar 15 13:50:46 2018
 
 import numpy as np
 import pandas as pd
+from DNN_SGDOptimizer import DNN_Optimizer
 from DNN_Core import DNN_Core
 from sklearn.model_selection import train_test_split
 
@@ -15,19 +16,17 @@ class DNN:
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
     
-    def fit(self, X, Y, epochs, alpha, reg_rate, dropout_prob, batch_type):
-        core = DNN_Core(self.layer_dims)
-        parameters = core.initialise_parameters()
+    def fit(self, X, Y, epochs, alpha, reg_type, reg_rate, batch_type, momentum, nesterov):
+        sgd = DNN_Optimizer(self.layer_dims)
+        
         if batch_type == 'full':
-            A, gradients, parameters = core.batchGD(X, Y, epochs, alpha, \
-                                    parameters, reg_rate, dropout_prob, True)
+            batch_size = X.shape[0]
+        if batch_type == 'mini_batch':
+            batch_size = 512
         else:
-            if batch_type == 'mini_batch':
-                batch_size = 512
-            else:
-                batch_size = 1
-            A, gradients, parameters = core.SGD(X, Y, epochs, alpha, parameters,\
-                                    batch_size, reg_rate, dropout_prob, True)
+            batch_size = 1
+        A, gradients, parameters = sgd.SGD(X, Y, epochs, alpha, batch_size,\
+                                    reg_type, reg_rate, momentum, nesterov, True)
         return A, gradients, parameters
     
     def predict(self, X, parameters, dropout_prob):
@@ -57,10 +56,11 @@ deepNN = DNN(layer_dims)
 
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.05, random_state=28) 
 
-Yhat, gradients, parameters = deepNN.fit(X_train, Y_train, 1500, 0.2, 0.9, 1, 'mini_batch')
+Yhat, gradients, parameters = deepNN.fit(X_train, Y_train, 1500, 0.1, 'l2', 0.9, \
+                                         'mini_batch', 0.01, False)
 
 accuracy = deepNN.accuracy(Yhat, Y_train)
 
-Yhat_test = deepNN.predict(X_test, parameters, 0.8)
+Yhat_test = deepNN.predict(X_test, parameters, 1)
 
 accuracy_test = deepNN.accuracy(Yhat_test, Y_test)
