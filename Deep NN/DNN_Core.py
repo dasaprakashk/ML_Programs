@@ -5,7 +5,7 @@ Created on Wed Mar 21 23:07:26 2018
 
 @author: Das
 
-Has ccore functions for computational model of Deep Neural Network
+Has core functions for computational model of Deep Neural Network
 """
 
 import numpy as np

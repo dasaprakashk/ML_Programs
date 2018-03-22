@@ -10,12 +10,12 @@ import numpy as np
 from Util import Util
 from DNN_Core import DNN_Core
 
-class DNN_SGDOptimizer:
+class DNN_RMSPropOptimizer:
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
     
     #Stochastic Gradient descent - Generalized for Mini batch and batch
-    def SGD(self, X, Y, epochs, alpha, batch_size, reg_type, reg_rate, momentum, nesterov, print_cost):
+    def RMSProp(self, X, Y, epochs, alpha, batch_size, reg_type, reg_rate, momentum, print_cost):
         util = Util()
         core = DNN_Core(self.layer_dims)
         J_history = []
@@ -39,7 +39,7 @@ class DNN_SGDOptimizer:
                 A, caches = core.feed_forward(x, parameters, dropout)
                 gradients = core.back_propogation(t, A, caches, dropout)
                 parameters = self.update_parameters(parameters, gradients, alpha, \
-                                                    l2, velocity, momentum, nesterov, Y.size)
+                                                    l2, velocity, momentum, Y.size)
             if print_cost:
                 if i % 100 == 0:
                     A, caches = core.feed_forward(X, parameters, dropout)
@@ -50,24 +50,15 @@ class DNN_SGDOptimizer:
                 core.plot_cost(J_history)
         return A, gradients, parameters
     
-    def update_parameters(self, parameters, gradients, alpha, l2, velocity, momentum, nesterov, m):
+    def update_parameters(self, parameters, gradients, alpha, l2, velocity, beta, m):
         layers = len(parameters) // 2
+        epsilon = 1e-8
         for l in range(layers):
             #l2 regularization
             parameters["W" + str(l+1)] += (alpha * l2/m) * parameters["W" + str(l+1)]
             
-            #Update velocity V(t) = ßV(t-1) + alpha(gradients)  
-            velocity["W" + str(l+1)] = momentum * velocity["W" + str(l+1)] - \
-                                        alpha * gradients["dW" + str(l+1)]
-            velocity["b" + str(l+1)] = momentum * velocity["b" + str(l+1)] - \
-                                        alpha * gradients["db" + str(l+1)]
-            #Nesterov and momentum updates
-            if nesterov:
-                parameters["W" + str(l+1)] += momentum * velocity["W" + str(l+1)] - \
-                                                alpha * gradients["W" + str(l+1)]
-                parameters["b" + str(l+1)] += momentum * velocity["b" + str(l+1)] - \
-                                                alpha * gradients["b" + str(l+1)]
-            else:
-                parameters["W" + str(l+1)] += velocity["W" + str(l+1)]
-                parameters["b" + str(l+1)] += velocity["b" + str(l+1)]
+            velocity["W" + str(l+1)] = beta * velocity["W" + str(l+1)] + (1-beta) * gradients["dW" + str(l+1)]**2
+            velocity["b" + str(l+1)] = beta * velocity["b" + str(l+1)] + (1-beta) * gradients["db" + str(l+1)]**2
+            parameters["W" + str(l+1)] -= (alpha * gradients["dW" + str(l+1)]) / (np.sqrt(velocity["W" + str(l+1)] + epsilon))
+            parameters["b" + str(l+1)] -= (alpha * gradients["db" + str(l+1)]) / (np.sqrt(velocity["b" + str(l+1)] + epsilon))
         return parameters

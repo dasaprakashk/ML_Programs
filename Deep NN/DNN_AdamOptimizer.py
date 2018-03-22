@@ -10,18 +10,19 @@ import numpy as np
 from Util import Util
 from DNN_Core import DNN_Core
 
-class DNN_SGDOptimizer:
+class DNN_AdamOptimizer:
     def __init__(self, layer_dims):
         self.layer_dims = layer_dims
     
     #Stochastic Gradient descent - Generalized for Mini batch and batch
-    def SGD(self, X, Y, epochs, alpha, batch_size, reg_type, reg_rate, momentum, nesterov, print_cost):
+    def Adam(self, X, Y, epochs, alpha, batch_size, reg_type, reg_rate, beta1, beta2, print_cost):
         util = Util()
         core = DNN_Core(self.layer_dims)
         J_history = []
         T = util.yEnc(Y)
         parameters = core.initialise_parameters()
-        velocity = core.initialise_velocity(parameters)
+        v1 = core.initialise_velocity(parameters)
+        v2 = core.initialise_velocity(parameters)
         if reg_type == 'l2':
             l2 = reg_rate
             dropout = 1
@@ -39,35 +40,28 @@ class DNN_SGDOptimizer:
                 A, caches = core.feed_forward(x, parameters, dropout)
                 gradients = core.back_propogation(t, A, caches, dropout)
                 parameters = self.update_parameters(parameters, gradients, alpha, \
-                                                    l2, velocity, momentum, nesterov, Y.size)
+                                                    l2, v1, v2, beta1, beta2, Y.size)
             if print_cost:
                 if i % 100 == 0:
-                    A, caches = core.feed_forward(X, parameters, dropout)
-                    J = core.cost_function(A, T, parameters, reg_rate)
+                    AL, caches = core.feed_forward(X, parameters, dropout)
+                    J = core.cost_function(AL, T, parameters, reg_rate)
                     J_history.append(J)
-                    rate = core.accuracy(A, Y)
+                    rate = core.accuracy(AL, Y)
                     print('Iteration: ' + str(i), 'Cost: ' + str(J), 'Accuracy: ' + str(rate))
                 core.plot_cost(J_history)
         return A, gradients, parameters
     
-    def update_parameters(self, parameters, gradients, alpha, l2, velocity, momentum, nesterov, m):
+    def update_parameters(self, parameters, gradients, alpha, l2, v, s, beta1, beta2, m):
         layers = len(parameters) // 2
+        epsilon = 1e-8
         for l in range(layers):
             #l2 regularization
             parameters["W" + str(l+1)] += (alpha * l2/m) * parameters["W" + str(l+1)]
             
-            #Update velocity V(t) = ßV(t-1) + alpha(gradients)  
-            velocity["W" + str(l+1)] = momentum * velocity["W" + str(l+1)] - \
-                                        alpha * gradients["dW" + str(l+1)]
-            velocity["b" + str(l+1)] = momentum * velocity["b" + str(l+1)] - \
-                                        alpha * gradients["db" + str(l+1)]
-            #Nesterov and momentum updates
-            if nesterov:
-                parameters["W" + str(l+1)] += momentum * velocity["W" + str(l+1)] - \
-                                                alpha * gradients["W" + str(l+1)]
-                parameters["b" + str(l+1)] += momentum * velocity["b" + str(l+1)] - \
-                                                alpha * gradients["b" + str(l+1)]
-            else:
-                parameters["W" + str(l+1)] += velocity["W" + str(l+1)]
-                parameters["b" + str(l+1)] += velocity["b" + str(l+1)]
+            v["W" + str(l+1)] = beta1 * v["W" + str(l+1)] + (1-beta1) * gradients["dW" + str(l+1)]
+            v["b" + str(l+1)] = beta1 * v["b" + str(l+1)] + (1-beta1) * gradients["db" + str(l+1)]
+            s["W" + str(l+1)] = beta2 * s["W" + str(l+1)] + (1-beta2) * gradients["dW" + str(l+1)]**2
+            s["b" + str(l+1)] = beta2 * s["b" + str(l+1)] + (1-beta2) * gradients["db" + str(l+1)]**2
+            parameters["W" + str(l+1)] -= (alpha * v["W" + str(l+1)]) / (np.sqrt(s["W" + str(l+1)]) + epsilon)
+            parameters["b" + str(l+1)] -= (alpha * v["b" + str(l+1)]) / (np.sqrt(s["b" + str(l+1)]) + epsilon)
         return parameters
