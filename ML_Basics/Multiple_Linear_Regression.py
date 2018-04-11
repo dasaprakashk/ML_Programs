@@ -56,7 +56,9 @@ class Train:
         
     #Cost Function    
     def cost_function(self, theta):
-        return (np.sum(np.dot(self.X, theta.T) - self.Y)**2)/(2*self.Y.size)
+        cost = (np.sum(np.dot(self.X, theta.T) - self.Y)**2)/(2*self.Y.size)
+        print(cost)
+        return cost
     
     #Plot cost function
     def plot_cost_function(self, J):
@@ -92,10 +94,6 @@ X = np.array(X)
 Y = np.array(Y)
 
 X = normalize(X)
-
-#Generalization
-for i in range(X.shape[1] - 1):
-    X[:, i] = (X[:, i] - X[:, i].mean())/X[:, i].std()
 
 #Create model, predictions and error
 model = LinearRegression()
