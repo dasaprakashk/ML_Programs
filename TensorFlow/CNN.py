@@ -8,9 +8,19 @@ Created on Mon Apr 16 10:40:25 2018
 
 import tensorflow as tf
 import numpy as np
-import pandas as pd
+from sklearn.model_selection import train_test_split
 
-df = pd.read_csv('../../MNIST_Data/train.csv', sep=',')
+
+#some constants
+CONST_NUM_EPOCHS = 2
+CONST_NUM_CHANNELS = 1
+CONST_BATCH_SIZE = 256
+CONST_IMAGE_SIZE = 28
+CONST_NUM_LABELS = 10
+CONST_SEED = 101
+
+
+'''df = pd.read_csv('../../MNIST_Data/train.csv', sep=',')
 
 X = df.iloc[:, 1:]
 Y = df.iloc[:, 0]
@@ -25,20 +35,30 @@ X = X.astype(np.float32)
 #Y = Y.astype(np.float32)
 
 #X = X.reshape(X.shape[0], X.shape[1], 1)
-X = X.reshape(X.shape[0], 28, 28, 1)
+X = X.reshape(X.shape[0], 28, 28, 1)'''
 
-train_size = X.shape[0]
+mnist = tf.contrib.learn.datasets.load_dataset('mnist')
+X_train = mnist.train.images
+y_train = np.asarray(mnist.train.labels, dtype=np.int32)
+X_test = mnist.test.images
+y_test = np.asarray(mnist.test.labels, dtype=np.int32)
 
-#some constants to declare
-CONST_NUM_EPOCHS = 50
-CONST_NUM_CHANNELS = 1
-CONST_BATCH_SIZE = 64
-CONST_IMAGE_SIZE = 28
-CONST_NUM_LABELS = 10
-CONST_SEED = 101
+X_train = X_train.reshape(X_train.shape[0], 28, 28, 1)
+X_test = X_test.reshape(X_test.shape[0], 28, 28, 1)
 
-T = np.zeros((Y.size, CONST_NUM_LABELS))
-T[np.arange(Y.size), Y] = 1
+X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, test_size=0.05, shuffle=True)
+
+train_size = X_train.shape[0]
+test_size = X_test.shape[0]
+
+T_train = np.zeros((y_train.size, CONST_NUM_LABELS))
+T_train[np.arange(y_train.size), y_train] = 1
+
+T_valid = np.zeros((y_valid.size, CONST_NUM_LABELS))
+T_valid[np.arange(y_valid.size), y_valid] = 1
+
+T_test = np.zeros((y_test.size, CONST_NUM_LABELS))
+T_test[np.arange(y_test.size), y_test] = 1
 
 tf.set_random_seed(CONST_SEED)
 
@@ -89,6 +109,18 @@ def fc_forward(X, W1, b1, W2, b2, train=True):
     output = tf.nn.softmax(tf.add(tf.matmul(hidden, W2), b2))
     return output
 
+def variable_summaries(name, var):
+    with tf.name_scope(name):
+        mean = tf.reduce_mean(var)
+        tf.summary.scalar('mean', mean)
+        with tf.name_scope('stddev'):
+            stddev = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(var,mean))))
+        tf.summary.scalar('stddev', stddev)
+        tf.summary.scalar('max', tf.reduce_max(var))
+        tf.summary.scalar('min', tf.reduce_min(var))
+        tf.summary.histogram('histogram',var)
+
+
 with tf.name_scope('init'):
     conv_w1, conv_b1, conv_w2, conv_b2, fc_w1, fc_b1, fc_w2, fc_b2 = initialise_parameters()
 
@@ -100,19 +132,34 @@ with tf.name_scope('flatten'):
     
 with tf.name_scope('fc'):
     logits = fc_forward(flatten_out, fc_w1, fc_b1, fc_w2, fc_b2)
+    valid_logits = fc_forward(flatten_out, fc_w1, fc_b1, fc_w2, fc_b2, False)
     
 with tf.name_scope('cost'):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=logits))
+
+with tf.name_scope('valid_cost'):
+    valid_cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=valid_logits))
     
 with tf.name_scope('train'):
-    opt = tf.train.AdamOptimizer(learning_rate=0.03).minimize(cost)
+    train = tf.train.AdamOptimizer(learning_rate=0.03).minimize(cost)
+    valid_train = tf.train.AdamOptimizer(learning_rate=0.03).minimize(valid_cost)
+
+scalar_labels = tf.argmax(y, axis=1)
+scalar_logits = tf.argmax(logits, axis=1)
+scalar_valid_logits = tf.argmax(valid_logits, axis=1)
+
+with tf.name_scope('acc'):
+    acc = 1 - tf.reduce_mean(tf.cast(tf.equal(scalar_labels, scalar_logits), tf.float32))
+
+with tf.name_scope('valid_acc'):
+    valid_acc = 1 - tf.reduce_mean(tf.cast(tf.equal(scalar_labels, scalar_valid_logits), tf.float32))
     
-tf.summary.histogram("Conv_W1", conv_w1)
-tf.summary.histogram("Conv_W2", conv_w2)
+variable_summaries("Conv_W1", conv_w1)
+variable_summaries("Conv_W2", conv_w2)
 tf.summary.histogram("Conv_b1", conv_b1)
 tf.summary.histogram("Conv_b2", conv_b2)
-tf.summary.histogram("FC_W1", fc_w1)
-tf.summary.histogram("FC_W2", fc_w2)
+variable_summaries("FC_W1", fc_w1)
+variable_summaries("FC_W2", fc_w2)
 tf.summary.histogram("FC_b1", fc_b1)
 tf.summary.histogram("FC_b2", fc_b2)
 tf.summary.scalar("cost", cost)
@@ -121,20 +168,44 @@ merged = tf.summary.merge_all()
 init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
-    writer = tf.summary.FileWriter('logs/CNN_board/1', graph=tf.get_default_graph())
+    train_writer = tf.summary.FileWriter('logs/CNN_board/train', graph=tf.get_default_graph())
+    test_writer = tf.summary.FileWriter('logs/CNN_board/test', graph=tf.get_default_graph())
     
     sess.run(init)
     
     for step in range(CONST_NUM_EPOCHS*train_size // CONST_BATCH_SIZE):
         
         offset = (step * CONST_BATCH_SIZE) % (train_size - CONST_BATCH_SIZE)
-        print(offset)
-        batch_data = X[offset:(offset + CONST_BATCH_SIZE), ...]
-        batch_labels = T[offset:(offset + CONST_BATCH_SIZE)]
+        batch_data = X_train[offset:(offset + CONST_BATCH_SIZE), ...]
+        batch_labels = T_train[offset:(offset + CONST_BATCH_SIZE)]
         
-        _, c, pred, summary = sess.run([opt, cost, logits, merged], feed_dict={x:batch_data, y:batch_labels})
+        _, c, pred, accuracy, summary = sess.run([train, cost, logits, acc, merged], feed_dict={x:batch_data, y:batch_labels})
         
-        writer.add_summary(summary, step)
+        if step%100 == 0:
+            _, v_c, v_pred, v_acc, v_summary = sess.run([valid_train, valid_cost, valid_logits, valid_acc, merged], feed_dict={x:X_valid, y:T_valid})
+            train_writer.add_summary(summary, step)
+            test_writer.add_summary(v_summary, step)
+            #print("Epoch:", (step+1), "cost =", "{:.5f}".format(c), "acc =", "{:.5f}".format(accuracy))
+            print("Epoch:", (step+1), "cost =", "{:.5f}".format(c), 
+                  "v_cost =", "{:.5f}".format(v_c), "acc =", "{:.5f}".format(accuracy), 
+                  "v_acc =", "{:.5f}".format(v_acc))
+    
+    test_pred = np.ndarray([test_size, CONST_NUM_LABELS])
+    for step in (0, test_size, CONST_BATCH_SIZE):
+        if step * CONST_BATCH_SIZE + CONST_BATCH_SIZE <= test_size:
+            start = step * CONST_BATCH_SIZE
+            end = step * CONST_BATCH_SIZE+CONST_BATCH_SIZE
+        else:
+            start = step * CONST_BATCH_SIZE
+            end = test_size
         
-        if step%10 == 0:
-            print("Epoch:", (step+1), "cost =", "{:.5f}".format(c))
+        batch_data = X_test[start:end]
+        batch_labels = T_test[start:end]
+        
+        _, t_pred = sess.run([valid_train, valid_logits], feed_dict={x:batch_data, y:batch_labels})
+        test_pred[start:end] = t_pred
+        
+predictions = np.argmax(test_pred, axis=1)
+test_acc = 1 - np.mean(y_test == predictions)
+        
+        
