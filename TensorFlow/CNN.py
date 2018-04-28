@@ -142,8 +142,7 @@ with tf.name_scope('valid_cost'):
     
 with tf.name_scope('train'):
     train = tf.train.AdamOptimizer(learning_rate=0.03).minimize(cost)
-    valid_train = tf.train.AdamOptimizer(learning_rate=0.03).minimize(valid_cost)
-
+    
 scalar_labels = tf.argmax(y, axis=1)
 scalar_logits = tf.argmax(logits, axis=1)
 scalar_valid_logits = tf.argmax(valid_logits, axis=1)
@@ -182,7 +181,7 @@ with tf.Session() as sess:
         _, c, pred, accuracy, summary = sess.run([train, cost, logits, acc, merged], feed_dict={x:batch_data, y:batch_labels})
         
         if step%100 == 0:
-            _, v_c, v_pred, v_acc, v_summary = sess.run([valid_train, valid_cost, valid_logits, valid_acc, merged], feed_dict={x:X_valid, y:T_valid})
+            v_c, v_pred, v_acc, v_summary = sess.run([valid_cost, valid_logits, valid_acc, merged], feed_dict={x:X_valid, y:T_valid})
             train_writer.add_summary(summary, step)
             test_writer.add_summary(v_summary, step)
             #print("Epoch:", (step+1), "cost =", "{:.5f}".format(c), "acc =", "{:.5f}".format(accuracy))
@@ -202,7 +201,7 @@ with tf.Session() as sess:
         batch_data = X_test[start:end]
         batch_labels = T_test[start:end]
         
-        _, t_pred = sess.run([valid_train, valid_logits], feed_dict={x:batch_data, y:batch_labels})
+        t_pred = sess.run([valid_logits], feed_dict={x:batch_data, y:batch_labels})
         test_pred[start:end] = t_pred
         
 predictions = np.argmax(test_pred, axis=1)

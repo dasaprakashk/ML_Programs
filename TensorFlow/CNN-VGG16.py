@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 
 #Constants
 CONST_NUM_EPOCHS = 5
-CONST_BATCH_SIZE = 128
+CONST_BATCH_SIZE = 64
 CONST_NUM_LABELS = 10
 CONST_SEED = 101
 NUM_CHANNELS = 3
@@ -35,9 +35,9 @@ def load_dataset():
     
     #Initialize train and test tensors
     X_train = np.zeros([NUM_FILES*IMAGES_PER_FILE, NUM_CHANNELS, IMAGE_SIZE, IMAGE_SIZE])
-    y_train = np.zeros([NUM_FILES*IMAGES_PER_FILE])
+    y_train = np.zeros([NUM_FILES*IMAGES_PER_FILE]).astype(np.int32)
     X_test = np.zeros([IMAGES_PER_FILE, NUM_CHANNELS, IMAGE_SIZE, IMAGE_SIZE])
-    y_test = np.zeros([IMAGES_PER_FILE])
+    y_test = np.zeros([IMAGES_PER_FILE]).astype(np.int32)
     
     #Load data from files
     for i in range(5):
@@ -82,20 +82,20 @@ train_size = X_train.shape[0]
 test_size = X_test.shape[0]
 
 T_train = np.zeros([y_train.size, CONST_NUM_LABELS])
-T_train[np.arange(y_train), y_train] = 1
+T_train[np.arange(y_train.size), y_train] = 1
 
 T_valid = np.zeros([y_valid.size, CONST_NUM_LABELS])
-T_valid[np.arange(y_valid), y_valid] = 1
+T_valid[np.arange(y_valid.size), y_valid] = 1
 
 T_test = np.zeros([y_test.size, CONST_NUM_LABELS])
-T_test[np.arange(y_test), y_test] = 1
+T_test[np.arange(y_test.size), y_test] = 1
 
 display_pics(X_test)
 
 
 def get_filter(channel_in, channel_out, filter_shape):
-    shape = [filter_shape[0], filter_shape[1], channel_in, channel_out]
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='W')
+    s = [filter_shape[0], filter_shape[1], channel_in, channel_out]
+    return tf.Variable(initial_value=tf.truncated_normal(shape=s, stddev=0.1), name='W')
 
 def get_bias(channel_out, const=True):
     if const:
@@ -103,44 +103,55 @@ def get_bias(channel_out, const=True):
     else:
         return tf.Variable(tf.zeros([channel_out]), name='b')
     
-def batch_norm(X, channel_out, is_train=True):
+def batch_normalization(X, channel_out, is_conv=True):
     beta = tf.Variable(tf.constant(0.0, shape=[channel_out]), name='beta', trainable=True)
     gamma = tf.Variable(tf.constant(1.0, shape=[channel_out]), name='gamma', trainable=True)
     
-    batch_mean, batch_var = tf.nn.moments(X, [0,1,2], name='moments')
+    if is_conv:
+        batch_mean, batch_var = tf.nn.moments(X, [0,1,2], name='moments')
+    else:
+        batch_mean, batch_var = tf.nn.moments(X, [0], name='moments')
     ema = tf.train.ExponentialMovingAverage(decay=0.5)
-    update_ma = ema.apply([batch_mean, batch_var])
-    mean, var = tf.cond(is_train, update_ma,
+    
+    def update_mean_var():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+    
+    mean, var = tf.cond(is_train, update_mean_var,
                        lambda:(ema.average(batch_mean), ema.average(batch_var)))
     norm = tf.nn.batch_normalization(X, mean, var, beta, gamma, 1e-3)
     return norm
     
-def conv_forward(X, channel_out, filter_shape, strides, padding, name, batch_norm=True, is_train=True):
-    filtr = get_filter(X.shape[-1], channel_out, filter_shape)
+def conv_forward(X, channel_out, filter_shape, strides, padding, name, batch_norm=True):
+    input_shape = X.get_shape().as_list()
+    channel_in = input_shape[-1]
+    filtr = get_filter(channel_in, channel_out, filter_shape)
     bias = get_bias(channel_out)
     conv = tf.nn.conv2d(X, filtr, strides, padding, name=name)
     if batch_norm:
-        conv = batch_norm(conv, channel_out, is_train)
+        conv = batch_normalization(conv, channel_out)
     relu = tf.nn.relu(tf.nn.bias_add(conv, bias), name='relu_'+name)
     return relu
 
 def flatten(X):
-    shape = tf.shape(X)
-    return tf.reshape(X, [shape[0], shape[1]*shape[2]*shape[3]], name='flatten')
+    shape = X.get_shape().as_list()
+    return tf.reshape(X, [tf.shape(X)[0], shape[1]*shape[2]*shape[3]], name='flatten')
 
-def fc_forward(X, channel_out, name, activation, is_train=True):
-    W = tf.Variable(tf.truncated_normal([X.shape[-1], channel_out], stddev=0.1), name='W')
-    b = tf.Variable(tf.constant(0.1, [channel_out]), name='b')
+def fc_forward(X, channel_out, name, activation):
+    input_shape = X.get_shape().as_list()
+    channel_in = input_shape[-1]
+    W = tf.Variable(tf.truncated_normal([channel_in, channel_out], stddev=0.1), name='W')
+    b = tf.Variable(tf.constant(0.1, shape=[channel_out]), name='b')
     if activation == 'relu':
         X = tf.nn.relu(tf.nn.bias_add(tf.matmul(X, W), b), name='relu_' + name)
-        X = batch_norm(X, channel_out, is_train)
-        if is_train:
-            X = tf.nn.dropout(X, keep_prob=0.5, name='dropout_' + name)
+        X = batch_normalization(X, channel_out, False)
+        X = tf.cond(is_train, lambda:tf.nn.dropout(X, keep_prob=0.5, name='dropout_' + name), lambda:X)
     elif activation=='softmax':
         X = tf.nn.softmax(tf.nn.bias_add(tf.matmul(X, W), b), name='relu_' + name)
     return X
 
-def model(X, is_train=True):
+def model(X):
     #VGG-16 Block1
     X = conv_forward(X, 64, (3,3), [1,1,1,1], 'SAME', name='block1_conv1')
     X = conv_forward(X, 64, (3,3), [1,1,1,1], 'SAME', name='block1_conv2')
@@ -178,14 +189,13 @@ def model(X, is_train=True):
     return X
 
 x = tf.placeholder(tf.float32, shape=[None, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS], name='X')
-y = tf.placeholder(tf.float32, shape=[None, CONST_NUM_LABELS], name='labels')
-
+y = tf.placeholder(tf.int32, shape=[None, CONST_NUM_LABELS], name='labels')
+is_train = tf.placeholder(tf.bool, name='training_phase')
 with tf.name_scope('vgg-16-model'):
     logits = model(x)
-    valid_logits = model(x, False)
     
 with tf.name_scope('cost'):
-    cost = tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=logits)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=logits))
 
 with tf.name_scope('train'):
     train = tf.train.AdamOptimizer(learning_rate=0.03).minimize(cost)
@@ -203,13 +213,13 @@ with tf.Session() as sess:
             batch_data = X_train[start:end]
             batch_labels = T_train[start:end]
             #Batch execution
-            _, preds, cost = sess.run([train, logits, cost], feed_dict={x:batch_data, y:batch_labels})
+            _, preds, c = sess.run([train, logits, cost], feed_dict={x:batch_data, y:batch_labels, is_train:True})
             if j%10 == 0:
-                print('Epoch:' + str(i), 'Batch:' + str(j), 'Cost:' + str(cost))
+                print('Epoch:' + str(i), 'Batch:' + str(j), 'Cost:' + str(c))
             if j%100 == 0:
-                preds = sess.run([valid_logits], feed_dict={x:X_valid, y:T_valid})
-                p_valid = np.argmax(preds, axis=1)
-                acc = np.mean(y_valid == p_valid)
+                v_preds = sess.run([logits], feed_dict={x:X_valid, y:T_valid, is_train:False})
+                p_valid = np.argmax(v_preds, axis=1)
+                acc = 1 - np.mean(y_valid == p_valid)
                 print('Epoch:' + str(i), 'Batch:' + str(j), 'Accuracy:' + str(acc))
 
     test_pred = np.zeros([test_size, CONST_NUM_LABELS])
@@ -220,11 +230,11 @@ with tf.Session() as sess:
             end = test_size
         batch_data = X_test[start:end]
         batch_labels = T_test[start:end]
-        preds = sess.run([valid_logits], feed_dict={x:batch_data, y:batch_labels})
+        t_preds = sess.run([logits], feed_dict={x:batch_data, y:batch_labels, is_train:False})
         test_pred[start:end] = preds
     
     p_test = np.argmax(test_pred, axis=1)
-    test_acc = np.mean(y_test == p_test)
+    test_acc = 1 - np.mean(y_test == p_test)
     print('Test Accuracy:' + str(test_acc))
     
     
