@@ -81,7 +81,7 @@ def conv_forward(X, channel_out, kernel, strides, padding, name):
     return tf.nn.conv2d(X, filtr, strides, padding, name=name)
 
 #batch_normalization
-def batch_normalization(X, channel_out, is_conv=True):
+def batch_normalization(X, channel_out, name, is_conv=True):
     beta = tf.Variable(tf.constant(0.0, dtype=tf.float32, shape=[channel_out]), 
                        trainable=True, name='beta')
     gamma = tf.Variable(tf.constant(1.0, dtype=tf.float32, shape=[channel_out]), 
@@ -100,10 +100,102 @@ def batch_normalization(X, channel_out, is_conv=True):
                 return tf.identity(batch_mean), tf.identity(batch_var)
 
     mean, var = tf.cond(is_train, update_mean_var, lambda:(ema.average(batch_mean), ema.average(batch_var)))
-    norm = tf.nn.batch_normalization(X, mean, var, beta, gamma, 1e-3, name='batch_norm')
+    norm = tf.nn.batch_normalization(X, mean, var, beta, gamma, 1e-3, name=name)
     return norm
 
-def activation_forward(X):
+def activation_forward(X, name):
     shape = X.get_shape().as_list()
     channel_out = shape[-1]
-    return tf.nn.relu(tf.nn.bias_add(X, channel_out))
+    return tf.nn.relu(tf.nn.bias_add(X, channel_out), name=name)
+
+def pooling_forward(X, kernel, strides, padding):
+    return tf.nn.max_pool(X, kernel, strides, padding)
+
+def identity_block(X, kernel, channels_out, stage, block):
+    conv_name_base = 'conv' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    
+    CO1, CO2, CO3 = channels_out
+    
+    X_shortcut = X
+    
+    #First component
+    X = conv_forward(X, channel_out=CO1, kernel=(1,1), strides=[1,1,1,1], padding='VALID', name=conv_name_base + '2a')
+    X = batch_normalization(X, channel_out=CO1, name=bn_name_base + '2a')
+    X = activation_forward(X, name='relu')
+    
+    #Second component
+    X = conv_forward(X, channel_out=CO2, kernel=kernel, strides=[1,1,1,1], padding='SAME', name=conv_name_base + '2b')
+    X = batch_normalization(X, channel_out=CO2, name=bn_name_base + '2b')
+    X = activation_forward(X, name='relu')
+    
+    X = conv_forward(X, channel_out=CO3, kernel=(1,1), strides=[1,1,1,1], padding='VALID', name=conv_name_base + '2c')
+    X = batch_normalization(X, channel_out=CO3, name=bn_name_base + '2c')
+    
+    X = tf.add(X, X_shortcut)
+    X = activation_forward(X, 'relu')
+    
+    return X
+
+def conv_block(X, kernel, channels_out, stage, block, s):
+    conv_name_base = 'conv' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    
+    CO1, CO2, CO3 = channels_out
+    
+    X_shortcut = X
+    
+    #First component
+    X = conv_forward(X, channel_out=CO1, kernel=(1,1), strides=[1,s,s,1], padding='VALID', name = conv_name_base + '2a')
+    X = batch_normalization(X, channel_out=CO1, name=bn_name_base + '2a')
+    X = activation_forward(X, name='relu')
+    
+    #Second component
+    X = conv_forward(X, channel_out=CO2, kernel=kernel, strides=[1,1,1,1], padding='SAME', name=conv_name_base + '2b')
+    X = batch_normalization(X, channel_out=CO2, name=bn_name_base + '2b')
+    X = activation_forward(X, name='relu')
+    
+    #Third component
+    X = conv_forward(X, channel_out=CO3, kernel=(1,1), strides=[1,1,1,1], padding='VALID', name=conv_name_base + '2c')
+    X = batch_normalization(X, channel_out=CO3, name=bn_name_base + '2c')
+    
+    #shortcut = Ws * shortcut
+    X_shortcut = conv_forward(X_shortcut, channel_out=CO3, kernel=(1,1), strides=[1,s,s,1], padding='VALID', name=conv_name_base + '1')
+    X_shortcut = batch_normalization(X_shortcut, channel_out=CO3, name=bn_name_base + '1')
+    
+    X = tf.add(X, X_shortcut)
+    X = activation_forward(X, name='relu')
+    return X
+
+def ResNet50(X):
+    X = tf.pad(X, tf.constant([1,3,3,1]), 'CONSTANT')
+
+    #Stage 1
+    X = conv_forward(X, 64, (7,7), [1,2,2,1], padding='VALID', name='conv1')
+    X = batch_normalization(X, 64, name='bn_conv1')
+    X = activation_forward(X, 'relu')
+    X = pooling_forward(X, kernel=(3,3), strides=[1,2,2,1], padding='VALID')
+    
+    #Stage 2
+    X = conv_block(X, kernel=(3,3), channels_out=(64, 64, 256), stage=2, block='a', s=1)
+    X = identity_block(X, kernel=(3,3), channels_out=(64, 64, 256), stage=2, block='b')
+    X = identity_block(X, kernel=(3,3), channels_out=(64, 64, 256), stage=2, block='c')
+    
+    #Stage 3
+    X = conv_block(X, kernel=(3,3), channels_out=(128, 128, 512), stage=3, block='a', s=2)
+    X = identity_block(X, kernel=(3,3), channels_out=(128,128,512), stage=3, block='b')
+    X = identity_block(X, kernel=(3,3), channels_out=(128,128,512), stage=3, block='c')
+    X = identity_block(X, kernel=(3,3), channels_out=(128,128,512), stage=3, block='d')
+
+    #Stage 4    
+    X = conv_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='a', s=2)
+    X = identity_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='b')
+    X = identity_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='c')
+    X = identity_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='d')
+    X = identity_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='e')    
+    X = identity_block(X, kernel=(3,3), channels_out=(256, 256, 1024), stage=4, block='f')
+    
+    #Stage 5
+    X = conv_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='a', s=2)
+    X = identity_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='b')
+    X = identity_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='c')
