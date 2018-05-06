@@ -47,7 +47,7 @@ X_train = X_train/255.0
 X_test = X_test/255.0
 
 #Train & validation sets
-X_train, y_train, X_valid, y_valid = train_test_split(X_train, test_size = 0.05, shuffle=True)
+X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, test_size = 0.05, shuffle=True)
 
 #One-hot vectorizing
 T_train = np.zeros([y_train.size, 6])
@@ -59,19 +59,17 @@ T_valid[np.arange(y_valid.size), y_valid] = 1
 T_test = np.zeros([y_test.size, 6])
 T_test[np.arange(y_test.size), y_test] = 1
 
-#TF placeholders
-x = tf.placeholder(dtype=tf.float32, shape=[None, 64, 64, 3], name='X')
-y = tf.placeholder(dtype=tf.int32, shape=[None, CONST_NUM_CLASSES], name='labels')
-is_train = tf.placeholder(dtype=tf.bool, name='training_phase')
+train_size = X_train.shape[0]
+test_size = X_test.shape[0]
 
 #get weights
 def get_filters(channel_in, channel_out, kernel):
     shape = [kernel[0], kernel[1], channel_in, channel_out]
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1, seed=CONST_SEED, name='W'))
+    return tf.Variable(tf.truncated_normal(shape, stddev=0.1, seed=CONST_SEED))
 
 #get bias
 def get_bias(channel_out):
-    return tf.Variable(tf.constant(0.1, dtype=tf.float32, shape=[channel_out], name='b'))
+    return tf.Variable(tf.constant(0.1, dtype=tf.float32, shape=[channel_out]))
 
 #convolution
 def conv_forward(X, channel_out, kernel, strides, padding, name):
@@ -83,9 +81,9 @@ def conv_forward(X, channel_out, kernel, strides, padding, name):
 #batch_normalization
 def batch_normalization(X, channel_out, name, is_conv=True):
     beta = tf.Variable(tf.constant(0.0, dtype=tf.float32, shape=[channel_out]), 
-                       trainable=True, name='beta')
+                       trainable=True)
     gamma = tf.Variable(tf.constant(1.0, dtype=tf.float32, shape=[channel_out]), 
-                        trainable=True, name='gamma')
+                        trainable=True)
     
     if is_conv:
         batch_mean, batch_var = tf.nn.moments(X, [0,1,2])
@@ -106,10 +104,8 @@ def batch_normalization(X, channel_out, name, is_conv=True):
 def activation_forward(X, name):
     shape = X.get_shape().as_list()
     channel_out = shape[-1]
-    return tf.nn.relu(tf.nn.bias_add(X, channel_out), name=name)
-
-def pooling_forward(X, kernel, strides, padding):
-    return tf.nn.max_pool(X, kernel, strides, padding)
+    bias = get_bias(channel_out)
+    return tf.nn.relu(tf.nn.bias_add(X, bias), name=name)
 
 def identity_block(X, kernel, channels_out, stage, block):
     conv_name_base = 'conv' + str(stage) + block + '_branch'
@@ -167,14 +163,26 @@ def conv_block(X, kernel, channels_out, stage, block, s):
     X = activation_forward(X, name='relu')
     return X
 
-def ResNet50(X):
-    X = tf.pad(X, tf.constant([1,3,3,1]), 'CONSTANT')
+def flatten(X):
+    shape = X.get_shape().as_list()
+    return tf.reshape(X, [tf.shape(X)[0], shape[1]*shape[2]*shape[3]])
 
+def fc_forward(X, channel_out):
+    shape = X.get_shape().as_list()
+    channel_in = shape[-1]
+    W = tf.Variable(tf.truncated_normal([channel_in,channel_out], stddev=0.1), name='W')
+    b = tf.Variable(tf.constant(0.1), name='b')
+    X = tf.nn.relu(tf.add(tf.matmul(X, W), b), name='relu')
+    return X
+
+def ResNetModel(X):
+    
     #Stage 1
-    X = conv_forward(X, 64, (7,7), [1,2,2,1], padding='VALID', name='conv1')
+    X = conv_forward(X, 64, (7,7), [1,2,2,1], padding='SAME', name='conv1')
     X = batch_normalization(X, 64, name='bn_conv1')
     X = activation_forward(X, 'relu')
-    X = pooling_forward(X, kernel=(3,3), strides=[1,2,2,1], padding='VALID')
+    X = tf.nn.max_pool(X, ksize=[1,3,3,1], strides=[1,2,2,1], padding='VALID')
+    #pooling_forward(X, kernel=(3,3), strides=[1,2,2,1], padding='VALID')
     
     #Stage 2
     X = conv_block(X, kernel=(3,3), channels_out=(64, 64, 256), stage=2, block='a', s=1)
@@ -199,3 +207,52 @@ def ResNet50(X):
     X = conv_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='a', s=2)
     X = identity_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='b')
     X = identity_block(X, kernel=(3,3), channels_out=(512, 512, 2048), stage=5, block='c')
+    
+    #AveragePool
+    X = tf.nn.avg_pool(X, ksize=[1,2,2,1], strides=[1,1,1,1], padding='VALID')
+    
+    #Flatten
+    X = flatten(X)
+    
+    #softmax
+    X = fc_forward(X, CONST_NUM_CLASSES)
+    X = tf.nn.softmax(X)
+    return X
+
+
+#TF placeholders
+x = tf.placeholder(dtype=tf.float32, shape=[None, 64, 64, 3], name='X')
+y = tf.placeholder(dtype=tf.int32, shape=[None, CONST_NUM_CLASSES], name='labels')
+is_train = tf.placeholder(dtype=tf.bool, name='training_phase')
+
+with tf.name_scope('ResNet50'):
+    logits = ResNetModel(x)
+    
+with tf.name_scope('cost'):
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=logits))
+
+with tf.name_scope('opt'):
+    opt = tf.train.AdamOptimizer().minimize(cost)
+
+tf.summary.scalar('cost', cost)
+merged = tf.summary.merge_all()
+    
+init = tf.global_variables_initializer()
+with tf.Session() as sess:
+    
+    writer = tf.summary.FileWriter("logs/ResNet_board/1", graph=tf.get_default_graph())
+    sess.run(init)
+    
+    for i in range(1):
+        for j in range(train_size//CONST_BATCH_SIZE):
+            start = j*CONST_BATCH_SIZE
+            end = j*CONST_BATCH_SIZE + CONST_BATCH_SIZE
+            
+            batch_input = X_train[start:end, ...]
+            batch_labels = T_train[start:end, ...]
+            
+            _, c, oput, summary = sess.run([opt, cost, logits, merged], feed_dict={x:batch_input, y:batch_labels, is_train:True})
+            writer.add_summary(summary, i)
+            
+            valid_cost, valid_logits = sess.run([cost, logits], feed_dict={x:X_valid, y:T_valid, is_train:False})
+    
