@@ -24,6 +24,15 @@ IMAGES_PER_FILE = 10000
 NUM_FILES = 5
 FILE_DIR = "../../CIFAR-10"
 
+#Load from pre-trained model
+def get_weights():
+    with tf.variable_scope('model'):
+        vgg16 = tf.contrib.keras.applications.VGG16(weights='imagenet', include_top=False)
+    outputs = { layer.name: layer.output for layer in vgg16.layers }
+    vgg_weights = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model')
+    return outputs, vgg_weights
+    
+
 def unpickle(file_dir, file):
     file = os.path.join(file_dir, file)
     with open(file, 'rb') as fo:
